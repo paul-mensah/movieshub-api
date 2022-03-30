@@ -1,0 +1,21 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{53C58A4E-26D0-426E-ACA7-6B52659ADC69}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoviesHub.Api", "src\MoviesHub.Api\MoviesHub.Api.csproj", "{3A984829-A043-4700-AA62-8F20494AA7DC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3A984829-A043-4700-AA62-8F20494AA7DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A984829-A043-4700-AA62-8F20494AA7DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A984829-A043-4700-AA62-8F20494AA7DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A984829-A043-4700-AA62-8F20494AA7DC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3A984829-A043-4700-AA62-8F20494AA7DC} = {53C58A4E-26D0-426E-ACA7-6B52659ADC69}
+	EndGlobalSection
+EndGlobal

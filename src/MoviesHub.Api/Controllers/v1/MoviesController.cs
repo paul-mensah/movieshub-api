@@ -91,6 +91,7 @@ public class MoviesController : ControllerBase
     /// </summary>
     /// <param name="movieId"></param>
     /// <returns></returns>
+    [Authorize(AuthenticationSchemes = "Bearer")]
     [AllowAnonymous]
     [HttpGet("{movieId}")]
     [Produces(MediaTypeNames.Application.Json)]

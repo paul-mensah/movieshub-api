@@ -9,6 +9,7 @@ using MoviesHub.Api.Models.Response.Movie.Reviews;
 using MoviesHub.Api.Models.Response.Movie.Videos;
 using MoviesHub.Api.Services.Interfaces;
 using Newtonsoft.Json;
+using StackExchange.Redis;
 using ILogger = Serilog.ILogger;
 
 namespace MoviesHub.Api.Services.Providers;
@@ -17,14 +18,17 @@ public class MoviesService : IMoviesService
 {
     private readonly ILogger _logger;
     private readonly IMoviesHttpService _moviesHttpService;
+    private readonly IConnectionMultiplexer _redis;
     private readonly TheMovieDbConfig _theMovieDbConfig;
 
     public MoviesService(ILogger logger,
         IMoviesHttpService moviesHttpService,
-        IOptions<TheMovieDbConfig> theMovieDbConfig)
+        IOptions<TheMovieDbConfig> theMovieDbConfig,
+        IConnectionMultiplexer redis)
     {
         _logger = logger;
         _moviesHttpService = moviesHttpService;
+        _redis = redis;
         _theMovieDbConfig = theMovieDbConfig.Value;
     }
     
@@ -57,7 +61,7 @@ public class MoviesService : IMoviesService
         }
     }
 
-    public async Task<BaseResponse<FullMovieResponse>> GetMovieDetails(string id)
+    public async Task<BaseResponse<FullMovieResponse>> GetMovieDetails(string id, string mobileNumber)
     {
         try
         {
@@ -97,6 +101,14 @@ public class MoviesService : IMoviesService
             var reviews = JsonConvert.DeserializeObject<MovieReviews>(fullMovieResponse[4].Data);
             var videos = JsonConvert.DeserializeObject<MovieVideos>(fullMovieResponse[5].Data);
 
+            var isFavoriteMovie = false;
+
+            if (!string.IsNullOrEmpty(mobileNumber))
+            {
+                var key = $"movieshub:movies:{mobileNumber}:favorites";
+                isFavoriteMovie = await _redis.GetDatabase().HashExistsAsync(key, movieDetails.Id);
+            }
+            
             var response = new FullMovieResponse
             {
                 Movie = movieDetails,
@@ -104,7 +116,8 @@ public class MoviesService : IMoviesService
                 RecommendedMovies = recommendedMoviesList?.Results.GetRandomMovies(10),
                 Credits = credit,
                 Reviews = reviews,
-                Videos = videos
+                Videos = videos,
+                IsFavoriteMovie = isFavoriteMovie
             };
             
             return CommonResponses.SuccessResponse.OkResponse(response);

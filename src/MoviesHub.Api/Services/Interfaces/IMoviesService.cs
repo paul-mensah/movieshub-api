@@ -7,5 +7,5 @@ namespace MoviesHub.Api.Services.Interfaces;
 public interface IMoviesService
 {
     Task<BaseResponse<PaginatedMoviesListResponse>> GetMoviesList(string path, MoviesFilter filter);
-    Task<BaseResponse<FullMovieResponse>> GetMovieDetails(string id);
+    Task<BaseResponse<FullMovieResponse>> GetMovieDetails(string id, string mobileNumber);
 }

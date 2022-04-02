@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MoviesHub.Api.Helpers;
 using MoviesHub.Api.Models.Filters;
@@ -90,13 +91,15 @@ public class MoviesController : ControllerBase
     /// </summary>
     /// <param name="movieId"></param>
     /// <returns></returns>
+    [AllowAnonymous]
     [HttpGet("{movieId}")]
     [Produces(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<FullMovieResponse>))]
     [SwaggerOperation("Get full details about a movie", OperationId = nameof(GetFullMovieDetails))]
     public async Task<IActionResult> GetFullMovieDetails([FromRoute] string movieId)
     {
-        var response = await _moviesService.GetMovieDetails(movieId);
+        var mobileNumber = User.GetUserData().MobileNumber;
+        var response = await _moviesService.GetMovieDetails(movieId, mobileNumber);
         return StatusCode(response.Code, response);
     }
 }

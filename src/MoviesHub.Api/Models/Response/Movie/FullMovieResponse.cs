@@ -12,4 +12,5 @@ public class FullMovieResponse
     public MovieCredit? Credits { get; set; }
     public MovieReviews? Reviews { get; set; }
     public MovieVideos? Videos { get; set; }
+    public bool IsFavoriteMovie { get; set; }
 }

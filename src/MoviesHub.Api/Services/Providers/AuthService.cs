@@ -1,5 +1,7 @@
 using System.Net;
+using AutoMapper;
 using Bogus;
+using Flurl;
 using Flurl.Http;
 using Microsoft.Extensions.Options;
 using MoviesHub.Api.Configurations;
@@ -10,7 +12,6 @@ using MoviesHub.Api.Models.Response.HubtelSms;
 using MoviesHub.Api.Services.Interfaces;
 using Newtonsoft.Json;
 using StackExchange.Redis;
-using ILogger = Serilog.ILogger;
 
 namespace MoviesHub.Api.Services.Providers;
 
@@ -18,7 +19,9 @@ public class AuthService : IAuthService
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly IUserService _userService;
-    private readonly ILogger _logger;
+    private readonly ILogger<AuthService> _logger;
+    private readonly IMapper _mapper;
+    private readonly RedisConfig _redisConfig;
     private readonly HubtelSmsConfig _hubtelSmsConfig;
     private readonly Faker _faker;
     private readonly BearerTokenConfig _bearerTokenConfig;
@@ -26,17 +29,21 @@ public class AuthService : IAuthService
     public AuthService(IConnectionMultiplexer redis,
         IOptions<HubtelSmsConfig> hubtelSmsConfig,
         IUserService userService,
-        ILogger logger, 
-        IOptions<BearerTokenConfig> bearerTokenConfig)
+        ILogger<AuthService> logger,
+        IOptions<BearerTokenConfig> bearerTokenConfig,
+        IOptions<RedisConfig> redisConfig,
+        IMapper mapper)
     {
         _redis = redis;
         _userService = userService;
         _logger = logger;
+        _mapper = mapper;
+        _redisConfig = redisConfig.Value;
         _bearerTokenConfig = bearerTokenConfig.Value;
         _hubtelSmsConfig = hubtelSmsConfig.Value;
         _faker = new Faker();
     }
-    
+
     public async Task<BaseResponse<OtpCodeResponse>> RequestOtpCode(string mobileNumber)
     {
         try
@@ -52,40 +59,35 @@ public class AuthService : IAuthService
                 };
             }
 
-            var key = $"movieshub:otp:{mobileNumber}";
-            var otpCode = _faker.Random.Number(100000, 999999);
-            var prefix = _faker.Random.String2(4).ToUpper();
-            
-            var otpCodeResponse = new RedisOtpCodeResponse
-            {
-                Prefix = prefix,
-                Code = otpCode
-            };
+            var otpCode = new OtpCode(
+                prefix: _faker.Random.String2(4).ToUpper(),
+                code: _faker.Random.Number(100000, 999999));
+            var key = CommonConstants.Authentication.GetUserOtpKey(mobileNumber, otpCode.RequestId);
 
             var savedInRedis = await _redis.GetDatabase()
-                .StringSetAsync(key, JsonConvert.SerializeObject(otpCodeResponse), TimeSpan.FromMinutes(15));
-            
-            if (!savedInRedis)
-            {
-                return CommonResponses.ErrorResponse.FailedDependencyErrorResponse<OtpCodeResponse>();
-            }
+                .StringSetAsync(
+                    key,
+                    JsonConvert.SerializeObject(otpCode),
+                    TimeSpan.FromMinutes(_redisConfig.OtpCodeExpiryInMinutes));
 
-            var sendSmsResponse = await SendSms(mobileNumber, new SendSmsRequest
+            if (!savedInRedis)
+                return CommonResponses.ErrorResponse
+                    .FailedDependencyErrorResponse<OtpCodeResponse>();
+
+            var smsSent = await SendSms(mobileNumber, new SendSmsRequest
             {
-                Code = otpCode,
-                Prefix = prefix
+                Code = otpCode.Code,
+                Prefix = otpCode.Prefix
             });
 
-            return !201.Equals(sendSmsResponse.Code) 
-                ? CommonResponses.ErrorResponse.InternalServerErrorResponse<OtpCodeResponse>()
-                : CommonResponses.SuccessResponse.OkResponse(new OtpCodeResponse
-                {
-                    Prefix = otpCodeResponse.Prefix
-                }, "OTP code sent successfully");
+            if (!smsSent) return CommonResponses.ErrorResponse.InternalServerErrorResponse<OtpCodeResponse>();
+
+            var otpCodeResponse = _mapper.Map<OtpCodeResponse>(otpCode);
+            return CommonResponses.SuccessResponse.OkResponse(otpCodeResponse, "OTP code sent successfully");
         }
         catch (Exception e)
         {
-            _logger.Error(e, "An error occured sending otp to user:{mobileNumber}", mobileNumber);
+            _logger.LogError(e, "[{mobileNumber}] An error occured sending otp to user", mobileNumber);
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<OtpCodeResponse>();
         }
     }
@@ -94,6 +96,23 @@ public class AuthService : IAuthService
     {
         try
         {
+            var otpKey = CommonConstants.Authentication.GetUserOtpKey(mobileNumber, request.RequestId);
+            var otpRedisResponse = await _redis.GetDatabase().StringGetAsync(otpKey);
+
+            if (!otpRedisResponse.HasValue)
+                return CommonResponses.ErrorResponse
+                    .BadRequestResponse<LoginResponse>("OTP verification failed");
+
+            var otpData = JsonConvert.DeserializeObject<OtpCode>(otpRedisResponse);
+
+            if (otpData is null)
+                return CommonResponses.ErrorResponse
+                    .FailedDependencyErrorResponse<LoginResponse>();
+
+            if (!otpData.Code.Equals(request.Code) || !otpData.Prefix.Equals(request.Prefix))
+                return CommonResponses.ErrorResponse
+                    .BadRequestResponse<LoginResponse>("Incorrect authentication code");
+
             var userResponse = await _userService.GetUserAccount(mobileNumber);
 
             if (!200.Equals(userResponse.Code))
@@ -104,84 +123,50 @@ public class AuthService : IAuthService
                     Message = userResponse.Message
                 };
             }
-            
-            var otpKey = $"movieshub:otp:{mobileNumber}";
-            var otpRedisResponse = await _redis.GetDatabase().StringGetAsync(otpKey);
-
-            if (!otpRedisResponse.HasValue)
-            {
-                return CommonResponses.ErrorResponse.BadRequestResponse<LoginResponse>("OTP verification failed. Expiry limit reached");
-            }
-            
-            var otpData = JsonConvert.DeserializeObject<RedisOtpCodeResponse>(otpRedisResponse);
-
-            if (!otpData.Code.Equals(request.Code) || !otpData.Prefix.Equals(request.Prefix))
-            {
-                return new BaseResponse<LoginResponse>
-                {
-                    Code = (int) HttpStatusCode.BadRequest,
-                    Message = "Incorrect authentication code"
-                };
-            }
-
             var tokenResponse = userResponse.Data.GenerateToken(_bearerTokenConfig);
-
-            var loginResponse = new LoginResponse
-            {
-                User = userResponse.Data,
-                Expiry = tokenResponse.Expiry,
-                Token = tokenResponse.BearerToken
-            };
-
-            return CommonResponses.SuccessResponse.OkResponse(loginResponse, "Verification successful");
+            
+            return CommonResponses.SuccessResponse
+                .OkResponse(new LoginResponse(tokenResponse, userResponse.Data),
+                    "Verification successful");
         }
         catch (Exception e)
         {
-            _logger.Error(e, "An error occured verifying user:{mobileNumber} otp request\nRequest => {request}", 
+            _logger.LogError(e, "[{mobileNumber}] An error occured verifying user otp request\nRequest => {request}",
                 mobileNumber, JsonConvert.SerializeObject(request, Formatting.Indented));
 
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<LoginResponse>();
         }
     }
 
-    private async Task<BaseResponse<SmsResponse>> SendSms(string mobileNumber, SendSmsRequest request)
+    private async Task<bool> SendSms(string mobileNumber, SendSmsRequest request)
     {
         try
         {
-            var content = $"Your authentication code for MoviesHub is {request.Prefix}-{request.Code}. " +
-                          "Your OTP code expires in 15 minutes.";
-            
-            var url = $"https://smsc.hubtel.com/v1/messages/send" +
-                      $"?clientid={_hubtelSmsConfig.ClientKey}" +
-                      $"&clientsecret={_hubtelSmsConfig.ClientSecret}" +
-                      $"&from={_hubtelSmsConfig.SenderId}" +
-                      $"&to={mobileNumber}" +
-                      $"&content={content}";
-            
+            var url = new Url(_hubtelSmsConfig.BaseUrl);
+            url.SetQueryParams(new
+            {
+                clientid = _hubtelSmsConfig.ClientKey,
+                clientsecret = _hubtelSmsConfig.ClientSecret,
+                from = _hubtelSmsConfig.SenderId,
+                to = mobileNumber,
+                content = CommonConstants.Authentication
+                    .GetOtpSmsContent(request, _redisConfig.OtpCodeExpiryInMinutes)
+            });
+
             var serverResponse = await url.AllowAnyHttpStatus().GetAsync();
 
-            if (!serverResponse.ResponseMessage.IsSuccessStatusCode)
-            {
-                _logger.Error( "An error occured sending sms to user:{mobileNumber}\nResponse: {response}", 
-                    mobileNumber, serverResponse.ResponseMessage.ReasonPhrase);
-                
-                return new BaseResponse<SmsResponse>
-                {
-                    Code = serverResponse.StatusCode,
-                    Message = serverResponse.ResponseMessage.ReasonPhrase
-                };
-            }
+            if (serverResponse.ResponseMessage.IsSuccessStatusCode) return true;
             
             var rawResponse = await serverResponse.GetStringAsync();
-            var response = JsonConvert.DeserializeObject<SmsResponse>(rawResponse);
+            _logger.LogError("[{mobileNumber}] An error occured sending sms to user\nResponse => {response}",
+                mobileNumber, rawResponse);
 
-            return CommonResponses.SuccessResponse.CreatedResponse<SmsResponse>(response);
-
+            return false;
         }
         catch (Exception e)
         {
-            _logger.Error(e, "An error occured sending sms to user:{mobileNumber}", mobileNumber);
-            return CommonResponses.ErrorResponse.InternalServerErrorResponse<SmsResponse>();
+            _logger.LogError(e, "An error occured sending sms to user:{mobileNumber}", mobileNumber);
+            return false;
         }
     }
 }

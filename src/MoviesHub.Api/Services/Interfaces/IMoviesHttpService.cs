@@ -1,9 +1,9 @@
-using MoviesHub.Api.Models.Response;
+using MoviesHub.Api.Models.Response.Movie;
 
 namespace MoviesHub.Api.Services.Interfaces
 {
     public interface IMoviesHttpService
     {
-        Task<BaseResponse<string>> GetAsync(string url);
+        Task<MoviesHttpResponse> GetAsync(string url);
     }
 }

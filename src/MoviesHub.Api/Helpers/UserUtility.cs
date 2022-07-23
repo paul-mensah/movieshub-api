@@ -8,7 +8,7 @@ public static class UserHelper
 {
     public static UserResponse GetUserData(this ClaimsPrincipal claims)
     {
-        var claimsIdentity = claims.Identities.FirstOrDefault(i => i.AuthenticationType == CommonConstants.AppAuthIdentity);
+        var claimsIdentity = claims.Identities.FirstOrDefault(i => i.AuthenticationType == CommonConstants.Authentication.AppAuthIdentity);
         var userData = claimsIdentity?.FindFirst(ClaimTypes.Thumbprint);
 
         if (userData is null)

@@ -2,11 +2,13 @@ using System.Text.Json;
 using MoviesHub.Api.Configurations;
 using MoviesHub.Api.Middlewares;
 using MoviesHub.Api.ServiceExtensions;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.UseSerilog();
+ServiceExtensions.ConfigureSerilog();
+builder.Host.UseSerilog();
 builder.Services.InitializeSwagger(builder.Configuration);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.InitializeRedis(new RedisConfig

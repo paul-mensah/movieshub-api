@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,8 +11,9 @@ using MoviesHub.Api.Services.Interfaces;
 using MoviesHub.Api.Services.Providers;
 using Newtonsoft.Json;
 using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.Elasticsearch;
 using StackExchange.Redis;
-using ILogger = Serilog.ILogger;
 
 namespace MoviesHub.Api.ServiceExtensions;
 
@@ -65,6 +67,11 @@ public static class ServiceExtensions
                     new List<string>()
                 }
             });
+            
+            // Set the comments path for the Swagger JSON and UI.
+            var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+            c.IncludeXmlComments(xmlPath);
         });
     }
 
@@ -125,7 +132,7 @@ public static class ServiceExtensions
                         new Claim(ClaimTypes.Thumbprint, JsonConvert.SerializeObject(userData)),
                     };
                             
-                    var appIdentity = new ClaimsIdentity(claims, CommonConstants.AppAuthIdentity);
+                    var appIdentity = new ClaimsIdentity(claims, CommonConstants.Authentication.AppAuthIdentity);
                     context.Principal.AddIdentity(appIdentity);
                 }
             };
@@ -140,15 +147,31 @@ public static class ServiceExtensions
         });
     }
 
-    public static void UseSerilog(this WebApplicationBuilder applicationBuilder)
+    public static void ConfigureSerilog()
     {
-        applicationBuilder.Logging.ClearProviders();
-        ILogger serilog = new LoggerConfiguration()
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json",
+                optional: true)
+            .Build();
+        
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+            .Enrich.FromLogContext()
+            .Enrich.WithEnvironmentName()
+            .Enrich.WithMachineName()
+            .Enrich.WithProperty("Environment", environment)
             .WriteTo.Console()
+            .WriteTo.Debug()
+            .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(configuration["ElasticSearchConfig:Url"]))
+            {
+                AutoRegisterTemplate = true,
+                IndexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name!.ToLower().Replace(".", "-")}-" +
+                              $"{environment?.ToLower().Replace(".", "-")}"
+            })
+            .ReadFrom.Configuration(configuration)
             .CreateLogger();
-
-        applicationBuilder.Logging.AddSerilog(serilog);
-        applicationBuilder.Services.AddSingleton(serilog);
     }
     
     public static void AddCustomServicesAndConfigurations(this IServiceCollection serviceCollection, IConfiguration configuration)

@@ -5,7 +5,7 @@ namespace MoviesHub.Api.Helpers;
 
 public static class CommonResponses
 {
-    private const string InternalServerErrorResponseMessage = "Something bad happened, try again later";
+    public const string InternalServerErrorResponseMessage = "Something bad happened, try again later";
     private const string FailedDependencyErrorResponseMessage = "An error occured, try again later";
     private const string DefaultOkResponseMessage = "Retrieved successfully";
     private const string DefaultNotFoundResponseMessage = "Resource not found";
@@ -34,6 +34,13 @@ public static class CommonResponses
             {
                 Code = (int) HttpStatusCode.NotFound,
                 Message = message ?? DefaultNotFoundResponseMessage
+            };
+        
+        public static BaseResponse<T> ConflictResponse<T>(string message) =>
+            new BaseResponse<T>
+            {
+                Code = (int) HttpStatusCode.Conflict,
+                Message = message
             };
         
         public static BaseResponse<T> BadRequestResponse<T>(string message) =>
@@ -70,12 +77,11 @@ public static class CommonResponses
                 Data = data
             };
         
-        public static BaseResponse<T> DeleteResponse<T>(T data, string? message = null) =>
+        public static BaseResponse<T> DeleteResponse<T>(string? message = null) =>
             new BaseResponse<T>
             {
                 Code = (int) HttpStatusCode.OK,
-                Message = message ?? DefaultDeletedResponseMessage,
-                Data = data
+                Message = message ?? DefaultDeletedResponseMessage
             };
     }
 

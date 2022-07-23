@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mime;
 using Microsoft.AspNetCore.Diagnostics;
+using MoviesHub.Api.Helpers;
 using Newtonsoft.Json;
 
 namespace MoviesHub.Api.Middlewares;
@@ -25,7 +26,7 @@ public static class GlobalExceptionHandler
                     var response = new
                     {
                         code = (int) HttpStatusCode.InternalServerError,
-                        message = "Something bad happened, try again later."
+                        message = CommonResponses.InternalServerErrorResponseMessage
                     };
 
                     context.Response.ContentLength = JsonConvert.SerializeObject(response).Length;

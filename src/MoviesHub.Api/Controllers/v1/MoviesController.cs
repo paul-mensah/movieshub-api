@@ -33,7 +33,7 @@ public class MoviesController : ControllerBase
     [SwaggerOperation("Get top rated movies", OperationId = nameof(GetTopRatedMovies))]
     public async Task<IActionResult> GetTopRatedMovies([FromQuery] MoviesFilter filter)
     {
-        var response = await _moviesService.GetMoviesList(CommonConstants.TopRatedMoviesPath, filter);
+        var response = await _moviesService.GetMoviesList(CommonConstants.Movies.TopRatedMoviesPath, filter);
 
         return StatusCode(response.Code, response);
     }
@@ -49,7 +49,7 @@ public class MoviesController : ControllerBase
     [SwaggerOperation("Get popular movies", OperationId = nameof(GetPopularMovies))]
     public async Task<IActionResult> GetPopularMovies([FromQuery] MoviesFilter filter)
     {
-        var response = await _moviesService.GetMoviesList(CommonConstants.PopularMoviesPath, filter);
+        var response = await _moviesService.GetMoviesList(CommonConstants.Movies.PopularMoviesPath, filter);
 
         return StatusCode(response.Code, response);
     }
@@ -65,7 +65,7 @@ public class MoviesController : ControllerBase
     [SwaggerOperation("Get upcoming movies", OperationId = nameof(GetUpcomingMovies))]
     public async Task<IActionResult> GetUpcomingMovies([FromQuery] MoviesFilter filter)
     {
-        var response = await _moviesService.GetMoviesList(CommonConstants.UpcomingMoviesPath, filter);
+        var response = await _moviesService.GetMoviesList(CommonConstants.Movies.UpcomingMoviesPath, filter);
 
         return StatusCode(response.Code, response);
     }
@@ -81,7 +81,7 @@ public class MoviesController : ControllerBase
     [SwaggerOperation("Get trending movies", OperationId = nameof(GetTrendingMovies))]
     public async Task<IActionResult> GetTrendingMovies([FromQuery] MoviesFilter filter)
     {
-        var response = await _moviesService.GetMoviesList(CommonConstants.TrendingMoviesPath, filter);
+        var response = await _moviesService.GetMoviesList(CommonConstants.Movies.TrendingMoviesPath, filter);
 
         return StatusCode(response.Code, response);
     }

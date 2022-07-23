@@ -5,7 +5,9 @@ namespace MoviesHub.Api.Models.Response.Auth;
 public class VerifyOtpRequest
 {
     [Required(AllowEmptyStrings = false)]
-    public string Prefix { get; set; }
+    public string RequestId { get; set; }
+    [Required(AllowEmptyStrings = false)]
+    public string? Prefix { get; set; }
     [Required]
     public int Code { get; set; }
 }

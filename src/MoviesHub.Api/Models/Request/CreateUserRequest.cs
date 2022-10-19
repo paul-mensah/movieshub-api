@@ -9,7 +9,6 @@ public class CreateUserRequest
     [Required(AllowEmptyStrings = false)]
     public string LastName { get; set; }
     [Required(AllowEmptyStrings = false)]
-    [MinLength(10)]
-    [MaxLength(10)]
+    [StringLength(10)]
     public string MobileNumber { get; set; }
 }

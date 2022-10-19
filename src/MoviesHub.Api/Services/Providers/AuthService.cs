@@ -62,9 +62,9 @@ public class AuthService : IAuthService
             var otpCode = new OtpCode(
                 prefix: _faker.Random.String2(4).ToUpper(),
                 code: _faker.Random.Number(100000, 999999));
-            var key = CommonConstants.Authentication.GetUserOtpKey(mobileNumber, otpCode.RequestId);
+            string key = CommonConstants.Authentication.GetUserOtpKey(mobileNumber, otpCode.RequestId);
 
-            var savedInRedis = await _redis.GetDatabase()
+            bool savedInRedis = await _redis.GetDatabase()
                 .StringSetAsync(
                     key,
                     JsonConvert.SerializeObject(otpCode),
@@ -96,7 +96,7 @@ public class AuthService : IAuthService
     {
         try
         {
-            var otpKey = CommonConstants.Authentication.GetUserOtpKey(mobileNumber, request.RequestId);
+            string otpKey = CommonConstants.Authentication.GetUserOtpKey(mobileNumber, request.RequestId);
             var otpRedisResponse = await _redis.GetDatabase().StringGetAsync(otpKey);
 
             if (!otpRedisResponse.HasValue)

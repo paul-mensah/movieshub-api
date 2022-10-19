@@ -1,7 +1,7 @@
 using System.Text.Json;
+using MoviesHub.Api.AppExtensions;
 using MoviesHub.Api.Configurations;
 using MoviesHub.Api.Middlewares;
-using MoviesHub.Api.ServiceExtensions;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);

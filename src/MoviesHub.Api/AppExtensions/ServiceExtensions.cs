@@ -15,7 +15,7 @@ using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
 using StackExchange.Redis;
 
-namespace MoviesHub.Api.ServiceExtensions;
+namespace MoviesHub.Api.AppExtensions;
 
 public static class ServiceExtensions
 {

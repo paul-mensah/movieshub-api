@@ -29,7 +29,7 @@ public static class TokenGenerator
             now.AddHours(12),
             new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256Signature));
 
-        var tokenString = tokenHandler.WriteToken(token);
+        string? tokenString = tokenHandler.WriteToken(token);
 
         return new GenerateTokenResponse
         {

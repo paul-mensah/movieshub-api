@@ -9,6 +9,6 @@ public interface IUserService
     Task<BaseResponse<UserResponse>> CreateUserAccount(CreateUserRequest request);
     Task<BaseResponse<UserResponse>> GetUserAccount(string mobileNumber);
     Task<BaseResponse<FavoriteMovieResponse>> AddFavoriteMovie(string mobileNumber, FavoriteMovieRequest request);
-    Task<BaseResponse<FavoriteMovieResponse>> DeleteFavoriteMovie(string mobileNumber, string movieId);
+    Task<BaseResponse<FavoriteMovieResponse>> DeleteFavoriteMovie(string mobileNumber, string id);
     Task<BaseResponse<IEnumerable<FavoriteMovieResponse>>> GetFavoriteMovies(string mobileNumber);
 }

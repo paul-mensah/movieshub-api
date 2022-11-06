@@ -5,7 +5,7 @@ namespace MoviesHub.Api.Models.Request;
 public class FavoriteMovieRequest
 {
     [Required]
-    public int Id { get; set; }
+    public int MovieId { get; set; }
     [Required(AllowEmptyStrings = false)]
     public string Title { get; set; }
     [Required(AllowEmptyStrings = false)]

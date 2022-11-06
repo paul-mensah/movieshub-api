@@ -8,6 +8,7 @@ using MoviesHub.Api.Models.Response.Movie;
 using MoviesHub.Api.Models.Response.Movie.Credits;
 using MoviesHub.Api.Models.Response.Movie.Reviews;
 using MoviesHub.Api.Models.Response.Movie.Videos;
+using MoviesHub.Api.Repositories;
 using MoviesHub.Api.Services.Interfaces;
 using Newtonsoft.Json;
 using StackExchange.Redis;
@@ -19,16 +20,19 @@ public class MoviesService : IMoviesService
     private readonly ILogger<MoviesService> _logger;
     private readonly IMoviesHttpService _moviesHttpService;
     private readonly IConnectionMultiplexer _redis;
+    private readonly IFavoriteMovieRepository _favoriteMovieRepository;
     private readonly TheMovieDbConfig _theMovieDbConfig;
 
     public MoviesService(ILogger<MoviesService> logger,
         IMoviesHttpService moviesHttpService,
         IOptions<TheMovieDbConfig> theMovieDbConfig,
-        IConnectionMultiplexer redis)
+        IConnectionMultiplexer redis,
+        IFavoriteMovieRepository favoriteMovieRepository)
     {
         _logger = logger;
         _moviesHttpService = moviesHttpService;
         _redis = redis;
+        _favoriteMovieRepository = favoriteMovieRepository;
         _theMovieDbConfig = theMovieDbConfig.Value;
     }
 
@@ -65,8 +69,8 @@ public class MoviesService : IMoviesService
     {
         try
         {
-            var apiKey = _theMovieDbConfig.ApiKey;
-            var baseUrl = _theMovieDbConfig.BaseUrl;
+            string apiKey = _theMovieDbConfig.ApiKey;
+            string baseUrl = _theMovieDbConfig.BaseUrl;
 
             var movieDetailsTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}?api_key={apiKey}");
             var creditTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/credits?api_key={apiKey}");
@@ -85,9 +89,9 @@ public class MoviesService : IMoviesService
                 videosTask
             };
 
-            var fullMovieResponse = await Task.WhenAll(tasksList);
+            var fullMovieResponseList = await Task.WhenAll(tasksList);
 
-            var movieResponse = fullMovieResponse.FirstOrDefault();
+            var movieResponse = fullMovieResponseList.FirstOrDefault();
 
             if (movieResponse is not null && !movieResponse.IsSuccessful)
             {
@@ -95,30 +99,45 @@ public class MoviesService : IMoviesService
             }
 
             var movieDetails = JsonConvert.DeserializeObject<MovieResponse>(movieResponse?.Data!);
-            var similarMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponse[1].Data!);
-            var recommendedMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponse[2].Data!);
-            var credit = JsonConvert.DeserializeObject<MovieCredit>(fullMovieResponse[3].Data!);
-            var reviews = JsonConvert.DeserializeObject<MovieReviews>(fullMovieResponse[4].Data!);
-            var videos = JsonConvert.DeserializeObject<MovieVideos>(fullMovieResponse[5].Data!);
 
-            var isFavoriteMovie = false;
+            if (movieDetails is null)
+            {
+                return CommonResponses.ErrorResponse.NotFoundResponse<FullMovieResponse>("Movie not found");
+            }
+            
+            var similarMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponseList[1].Data!);
+            var recommendedMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponseList[2].Data!);
+            var credit = JsonConvert.DeserializeObject<MovieCredit>(fullMovieResponseList[3].Data!);
+            var reviews = JsonConvert.DeserializeObject<MovieReviews>(fullMovieResponseList[4].Data!);
+            var videos = JsonConvert.DeserializeObject<MovieVideos>(fullMovieResponseList[5].Data!);
+
+            bool isFavoriteMovie = false;
 
             if (!string.IsNullOrEmpty(mobileNumber))
             {
-                var key = CommonConstants.User.GetFavoriteMovieKey(mobileNumber);
-                isFavoriteMovie = await _redis.GetDatabase().HashExistsAsync(key, movieDetails?.Id);
+                isFavoriteMovie = await _favoriteMovieRepository.IsUserFavoriteMovie(mobileNumber, movieDetails.Id);
             }
-            
-            return CommonResponses.SuccessResponse.OkResponse(new FullMovieResponse
+
+            var fullMovieResponse = new FullMovieResponse
             {
                 Movie = movieDetails,
-                SimilarMovies = similarMoviesList.Results.GetRandomMovies(10),
-                RecommendedMovies = recommendedMoviesList.Results.GetRandomMovies(10),
                 Credits = credit,
                 Reviews = reviews,
                 Videos = videos,
                 IsFavoriteMovie = isFavoriteMovie
-            });
+            };
+
+            if (similarMoviesList is not null &&  similarMoviesList.Results.Any())
+            {
+                fullMovieResponse.SimilarMovies = similarMoviesList.Results.GetRandomMovies(10);
+            }
+            
+            if (recommendedMoviesList is not null &&  recommendedMoviesList.Results.Any())
+            {
+                fullMovieResponse.RecommendedMovies = recommendedMoviesList.Results.GetRandomMovies(10);
+            }
+            
+            return CommonResponses.SuccessResponse.OkResponse(fullMovieResponse);
         }
         catch (Exception e)
         {

@@ -12,6 +12,7 @@ namespace MoviesHub.Api.Controllers.v1;
 
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize(AuthenticationSchemes = "Bearer")]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(BaseResponse<EmptyResponse>))]
 public class UserController : ControllerBase
 {
@@ -27,6 +28,7 @@ public class UserController : ControllerBase
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
+    [AllowAnonymous]
     [HttpPost]
     [Consumes(MediaTypeNames.Application.Json)]
     [Produces(MediaTypeNames.Application.Json)]
@@ -46,6 +48,7 @@ public class UserController : ControllerBase
     /// </summary>
     /// <param name="mobileNumber"></param>
     /// <returns></returns>
+    [AllowAnonymous]
     [HttpGet("{mobileNumber}", Name = nameof(GetUserAccount))]
     [Produces(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<UserResponse>))]
@@ -61,7 +64,6 @@ public class UserController : ControllerBase
     /// Get user profile with user bearer token
     /// </summary>
     /// <returns></returns>
-    [Authorize(AuthenticationSchemes = "Bearer")]
     [HttpGet("profile")]
     [Produces(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<UserResponse>))]
@@ -69,8 +71,9 @@ public class UserController : ControllerBase
     [SwaggerOperation("Get user profile", OperationId = nameof(GetUserProfile))]
     public async Task<IActionResult> GetUserProfile()
     {
-        var mobileNumber = User.GetUserData().MobileNumber;
+        string mobileNumber = User.GetUserData().MobileNumber;
         var response = await _userService.GetUserAccount(mobileNumber);
+        
         return StatusCode(response.Code, response);
     }
 
@@ -79,7 +82,6 @@ public class UserController : ControllerBase
     /// </summary>
     /// <param name="request"></param>
     /// <returns></returns>
-    [Authorize(AuthenticationSchemes = "Bearer")]
     [HttpPost("movies/favorites")]
     [Consumes(MediaTypeNames.Application.Json)]
     [Produces(MediaTypeNames.Application.Json)]
@@ -88,7 +90,7 @@ public class UserController : ControllerBase
     [SwaggerOperation("Add movie to user's favorite list", OperationId = nameof(AddFavoriteMovieForUser))]
     public async Task<IActionResult> AddFavoriteMovieForUser([FromBody] FavoriteMovieRequest request)
     {
-        var mobileNumber = User.GetUserData().MobileNumber;
+        string mobileNumber = User.GetUserData().MobileNumber;
         var response = await _userService.AddFavoriteMovie(mobileNumber, request);
 
         return StatusCode(response.Code, response);
@@ -99,7 +101,6 @@ public class UserController : ControllerBase
     /// </summary>
     /// <param name="movieId"></param>
     /// <returns></returns>
-    [Authorize(AuthenticationSchemes = "Bearer")]
     [HttpDelete("movies/favorites/{movieId}")]
     [Consumes(MediaTypeNames.Application.Json)]
     [Produces(MediaTypeNames.Application.Json)]
@@ -108,18 +109,16 @@ public class UserController : ControllerBase
     [SwaggerOperation("Remove movie from user's favorite list", OperationId = nameof(DeleteFavoriteMovieForUser))]
     public async Task<IActionResult> DeleteFavoriteMovieForUser([FromRoute] string movieId)
     {
-        var mobileNumber = User.GetUserData().MobileNumber;
+        string mobileNumber = User.GetUserData().MobileNumber;
         var response = await _userService.DeleteFavoriteMovie(mobileNumber, movieId);
 
         return StatusCode(response.Code, response);
     }
-    
+
     /// <summary>
     /// Get user's favorite movies
     /// </summary>
-    /// <param name="movieId"></param>
     /// <returns></returns>
-    [Authorize(AuthenticationSchemes = "Bearer")]
     [HttpGet("movies/favorites")]
     [Produces(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<IEnumerable<FavoriteMovieResponse>>))]
@@ -128,7 +127,7 @@ public class UserController : ControllerBase
     [SwaggerOperation("Get user's favorite movies", OperationId = nameof(GetFavoriteMoviesForUser))]
     public async Task<IActionResult> GetFavoriteMoviesForUser()
     {
-        var mobileNumber = User.GetUserData().MobileNumber;
+        string mobileNumber = User.GetUserData().MobileNumber;
         var response = await _userService.GetFavoriteMovies(mobileNumber);
 
         return StatusCode(response.Code, response);

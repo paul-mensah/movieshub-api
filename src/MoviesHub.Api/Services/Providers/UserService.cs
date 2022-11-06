@@ -1,32 +1,33 @@
 using AutoMapper;
-using Microsoft.Extensions.Options;
-using MoviesHub.Api.Configurations;
 using MoviesHub.Api.Helpers;
 using MoviesHub.Api.Models.Request;
 using MoviesHub.Api.Models.Response;
 using MoviesHub.Api.Models.Response.Movie;
+using MoviesHub.Api.Repositories;
 using MoviesHub.Api.Services.Interfaces;
-using MoviesHub.Api.Storage.Models;
+using MoviesHub.Api.Storage.Entities;
 using Newtonsoft.Json;
-using StackExchange.Redis;
 
 namespace MoviesHub.Api.Services.Providers;
 
 public class UserService : IUserService
 {
     private readonly ILogger<UserService> _logger;
-    private readonly RedisConfig _redisConfig;
-    private readonly IConnectionMultiplexer _redis;
+    private readonly IUserRepository _userRepository;
+    private readonly IUserCacheRepository _userCacheRepository;
+    private readonly IFavoriteMovieRepository _favoriteMovieRepository;
     private readonly IMapper _mapper;
 
     public UserService(ILogger<UserService> logger,
-        IOptions<RedisConfig> redisConfig,
-        IConnectionMultiplexer redis,
+        IUserRepository userRepository,
+        IUserCacheRepository userCacheRepository,
+        IFavoriteMovieRepository favoriteMovieRepository,
         IMapper mapper)
     {
         _logger = logger;
-        _redisConfig = redisConfig.Value;
-        _redis = redis;
+        _userRepository = userRepository;
+        _userCacheRepository = userCacheRepository;
+        _favoriteMovieRepository = favoriteMovieRepository;
         _mapper = mapper;
     }
     
@@ -34,25 +35,39 @@ public class UserService : IUserService
     {
         try
         {
-            var userKey = CommonConstants.User.GetUserKey(request.MobileNumber);
-            var userExists = _redis.GetDatabase().KeyExists(userKey);
+            /*
+             * Get user record from cache and query from DB if not found in cache 
+             */
+            var user = await _userCacheRepository.GetUserByMobileNumberAsync(request.MobileNumber) ??
+                          await _userRepository.GetUserByMobileNumberAsync(request.MobileNumber);
 
-            if (userExists)
+            if (user is not null)
+            {
                 return CommonResponses.ErrorResponse
                     .ConflictResponse<UserResponse>("User account already created");
-            
-            var newUserAccount = _mapper.Map<User>(request);
-            var serializedNewUserAccount = JsonConvert.SerializeObject(newUserAccount);
-            
-            var userCreatedResponse = await _redis.GetDatabase()
-                .StringSetAsync(userKey, serializedNewUserAccount, TimeSpan.FromDays(_redisConfig.DataExpiryDays));
+            }
 
-            if (!userCreatedResponse)
+            var newUserAccount = _mapper.Map<User>(request);
+
+            /*
+             * Create in DB and cache if successful
+             */
+            bool isSavedInDb = await _userRepository.CreateAsync(newUserAccount);
+
+            if (!isSavedInDb)
             {
-                _logger.LogError("[{mobileNumber}] An error occured creating user account\nRequest => {request}",
+                _logger.LogError("{mobileNumber}: An error occured creating user account in DB\nRequest => {request}",
                     request.MobileNumber, JsonConvert.SerializeObject(request, Formatting.Indented));
 
                 return CommonResponses.ErrorResponse.FailedDependencyErrorResponse<UserResponse>();
+            }
+
+            bool userAccountIsCached = await _userCacheRepository.CacheUserAccount(newUserAccount);
+
+            if (!userAccountIsCached)
+            {
+                _logger.LogError("{mobileNumber}: An error occured caching user account\nRequest => {request}",
+                    request.MobileNumber, JsonConvert.SerializeObject(request, Formatting.Indented));
             }
 
             var userResponse = _mapper.Map<UserResponse>(newUserAccount);
@@ -60,7 +75,7 @@ public class UserService : IUserService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "[{mobileNumber}] An error occured creating user account\nRequest: {request}",
+            _logger.LogError(e, "{mobileNumber}: An error occured creating user account\nRequest: {request}",
                 request.MobileNumber, JsonConvert.SerializeObject(request, Formatting.Indented));
 
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<UserResponse>();
@@ -71,19 +86,24 @@ public class UserService : IUserService
     {
         try
         {
-            var userKey = CommonConstants.User.GetUserKey(mobileNumber);
-            var user = await _redis.GetDatabase().StringGetAsync(userKey);
+            /*
+             * Get user record from cache and query from DB if not found in cache 
+             */
+            var user = await _userCacheRepository.GetUserByMobileNumberAsync(mobileNumber) ??
+                       await _userRepository.GetUserByMobileNumberAsync(mobileNumber);
 
-            if (!user.HasValue)
+            if (user is null)
+            {
                 return CommonResponses.ErrorResponse
                     .NotFoundResponse<UserResponse>("User not found");
+            }
 
-            var userResponse = JsonConvert.DeserializeObject<UserResponse>(user);
-            return CommonResponses.SuccessResponse.OkResponse<UserResponse>(userResponse);
+            var userResponse = _mapper.Map<UserResponse>(user);
+            return CommonResponses.SuccessResponse.OkResponse(userResponse);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "[{mobileNumber}] An error occured getting user account", mobileNumber);
+            _logger.LogError(e, "{mobileNumber}: An error occured getting user account", mobileNumber);
             
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<UserResponse>();
         }
@@ -93,42 +113,45 @@ public class UserService : IUserService
     {
         try
         {
-            var key = CommonConstants.User.GetFavoriteMovieKey(mobileNumber);
-            
-            await _redis.GetDatabase().HashSetAsync(key, new HashEntry[]
-            {
-                new (request.Id, JsonConvert.SerializeObject(request))
-            });
-            
-            return CommonResponses.SuccessResponse.CreatedResponse(_mapper.Map<FavoriteMovieResponse>(request));
+            var favoriteMovie = _mapper.Map<FavoriteMovie>(request);
+            favoriteMovie.UserMobileNumber = mobileNumber;
+
+            bool isSaved = await _favoriteMovieRepository.AddAsync(favoriteMovie);
+
+            return isSaved
+                ? CommonResponses.SuccessResponse.CreatedResponse(_mapper.Map<FavoriteMovieResponse>(favoriteMovie))
+                : CommonResponses.ErrorResponse.FailedDependencyErrorResponse<FavoriteMovieResponse>();
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "[{mobileNumber}] An error occured adding movie to user favorite list.\nMovie => {newFavoriteMovie}",
+            _logger.LogError(e, "{mobileNumber}: An error occured adding movie to user favorite list.\nMovie => {newFavoriteMovie}",
                 mobileNumber, JsonConvert.SerializeObject(request, Formatting.Indented));
 
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<FavoriteMovieResponse>();
         }
     }
 
-    public async Task<BaseResponse<FavoriteMovieResponse>> DeleteFavoriteMovie(string mobileNumber, string movieId)
+    public async Task<BaseResponse<FavoriteMovieResponse>> DeleteFavoriteMovie(string mobileNumber, string id)
     {
         try
         {
-            var key = CommonConstants.User.GetFavoriteMovieKey(mobileNumber);
+            var favoriteMovie = await _favoriteMovieRepository.GetUserFavoriteMovieById(mobileNumber, id);
 
-            var isDeleted = await _redis.GetDatabase().HashDeleteAsync(key, movieId);
+            if (favoriteMovie is null)
+            {
+                return CommonResponses.ErrorResponse.NotFoundResponse<FavoriteMovieResponse>("Movie not found");
+            }
+
+            bool isDeleted = await _favoriteMovieRepository.DeleteAsync(favoriteMovie);
 
             return isDeleted
-                ? CommonResponses.SuccessResponse
-                    .DeleteResponse<FavoriteMovieResponse>("Movie removed successfully")
-                : CommonResponses.ErrorResponse
-                    .FailedDependencyErrorResponse<FavoriteMovieResponse>();
+                ? CommonResponses.SuccessResponse.DeleteResponse<FavoriteMovieResponse>("Movie removed successfully")
+                : CommonResponses.ErrorResponse.FailedDependencyErrorResponse<FavoriteMovieResponse>();
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "[{mobileNumber}] An error occured removing movie:{movieId} from user favorite list", 
-                mobileNumber, movieId);
+            _logger.LogError(e, "{mobileNumber}: An error occured removing movie:{movieId} from user favorite list", 
+                mobileNumber, id);
 
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<FavoriteMovieResponse>();
         }
@@ -138,18 +161,17 @@ public class UserService : IUserService
     {
         try
         {
-            var key = CommonConstants.User.GetFavoriteMovieKey(mobileNumber);
-            var redisResponse = await _redis.GetDatabase().HashGetAllAsync(key);
+            var favoriteMoviesList = await _favoriteMovieRepository.GetFavoriteMovies(mobileNumber);
 
-            var favoriteMoviesList = redisResponse.Select(x =>
-                    JsonConvert.DeserializeObject<FavoriteMovieResponse>(x.Value))
+            var favoriteMoviesResponseEnumerable = favoriteMoviesList
+                .Select(x => _mapper.Map<FavoriteMovieResponse>(x))
                 .AsEnumerable();
 
-            return CommonResponses.SuccessResponse.OkResponse(favoriteMoviesList);
+            return CommonResponses.SuccessResponse.OkResponse(favoriteMoviesResponseEnumerable);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "[{mobileNumber}] An error occured getting favorite movies for user", 
+            _logger.LogError(e, "{mobileNumber}: An error occured getting favorite movies for user", 
                 mobileNumber);
 
             return CommonResponses.ErrorResponse

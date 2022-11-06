@@ -1,4 +1,4 @@
-namespace MoviesHub.Api.Storage.Models;
+namespace MoviesHub.Api.Storage.Entities;
 
 public class User
 {

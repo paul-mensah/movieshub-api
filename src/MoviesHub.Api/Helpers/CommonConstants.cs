@@ -39,12 +39,8 @@ public static class CommonConstants
 
     public static class User
     {
-        private const string FavoriteMovieKey = $"movieshub:movies:{MobileNumberIdentifier}:favorites";
         private const string UserKey = $"movieshub:user:{MobileNumberIdentifier}";
 
-        public static string GetFavoriteMovieKey(string mobileNumber) =>
-            FavoriteMovieKey.Replace(MobileNumberIdentifier, mobileNumber);
-        
         public static string GetUserKey(string mobileNumber) =>
             UserKey.Replace(MobileNumberIdentifier, mobileNumber);
     }

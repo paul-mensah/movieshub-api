@@ -3,7 +3,7 @@ using MoviesHub.Api.Models.Request;
 using MoviesHub.Api.Models.Response;
 using MoviesHub.Api.Models.Response.Auth;
 using MoviesHub.Api.Models.Response.Movie;
-using MoviesHub.Api.Storage.Models;
+using MoviesHub.Api.Storage.Entities;
 
 namespace MoviesHub.Api.Mapping;
 
@@ -13,7 +13,8 @@ public class AutoMapping : Profile
     {
         CreateMap<CreateUserRequest, User>().ReverseMap();
         CreateMap<User, UserResponse>().ReverseMap();
-        CreateMap<FavoriteMovieRequest, FavoriteMovieResponse>().ReverseMap();
+        CreateMap<FavoriteMovieRequest, FavoriteMovie>().ReverseMap();
+        CreateMap<FavoriteMovie, FavoriteMovieResponse>().ReverseMap();
         CreateMap<OtpCode, OtpCodeResponse>().ReverseMap();
     }
 }

@@ -5,7 +5,7 @@ public static class ShuffleResponseList
     public static List<T> GetRandomMovies<T>(this List<T> moviesList, int limit) where T : class
     {
         var random = new Random();
-        var totalCount = moviesList.Count;
+        int totalCount = moviesList.Count;
 
         var shuffledList = moviesList.OrderBy(m => random.Next(totalCount));
         

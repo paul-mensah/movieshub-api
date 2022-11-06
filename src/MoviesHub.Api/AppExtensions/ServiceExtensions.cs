@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using MoviesHub.Api.Configurations;
 using MoviesHub.Api.Helpers;
 using MoviesHub.Api.Models.Response;
+using MoviesHub.Api.Repositories;
 using MoviesHub.Api.Services.Interfaces;
 using MoviesHub.Api.Services.Providers;
 using Newtonsoft.Json;
@@ -180,6 +181,10 @@ public static class ServiceExtensions
         serviceCollection.AddScoped<IMoviesService, MoviesService>();
         serviceCollection.AddScoped<IUserService, UserService>();
         serviceCollection.AddScoped<IAuthService, AuthService>();
+        serviceCollection.AddScoped<IUserRepository, UserRepository>();
+        serviceCollection.AddScoped<IUserCacheRepository, UserCacheRepository>();
+        serviceCollection.AddScoped<IFavoriteMovieRepository, FavoriteMovieRepository>();
+        serviceCollection.AddScoped<IOtpCodeRepository, OtpCodeRepository>();
 
         serviceCollection.Configure<BearerTokenConfig>(configuration.GetSection(nameof(BearerTokenConfig)));
         serviceCollection.Configure<TheMovieDbConfig>(configuration.GetSection(nameof(TheMovieDbConfig)));

@@ -1,4 +1,3 @@
-using System.Net;
 using AutoMapper;
 using Bogus;
 using Flurl;
@@ -9,34 +8,34 @@ using MoviesHub.Api.Helpers;
 using MoviesHub.Api.Models.Response;
 using MoviesHub.Api.Models.Response.Auth;
 using MoviesHub.Api.Models.Response.HubtelSms;
+using MoviesHub.Api.Repositories;
 using MoviesHub.Api.Services.Interfaces;
 using Newtonsoft.Json;
-using StackExchange.Redis;
 
 namespace MoviesHub.Api.Services.Providers;
 
 public class AuthService : IAuthService
 {
-    private readonly IConnectionMultiplexer _redis;
     private readonly IUserService _userService;
     private readonly ILogger<AuthService> _logger;
+    private readonly IOtpCodeRepository _otpCodeRepository;
     private readonly IMapper _mapper;
     private readonly RedisConfig _redisConfig;
     private readonly HubtelSmsConfig _hubtelSmsConfig;
     private readonly Faker _faker;
     private readonly BearerTokenConfig _bearerTokenConfig;
 
-    public AuthService(IConnectionMultiplexer redis,
-        IOptions<HubtelSmsConfig> hubtelSmsConfig,
+    public AuthService(IOptions<HubtelSmsConfig> hubtelSmsConfig,
         IUserService userService,
         ILogger<AuthService> logger,
         IOptions<BearerTokenConfig> bearerTokenConfig,
         IOptions<RedisConfig> redisConfig,
+        IOtpCodeRepository otpCodeRepository,
         IMapper mapper)
     {
-        _redis = redis;
         _userService = userService;
         _logger = logger;
+        _otpCodeRepository = otpCodeRepository;
         _mapper = mapper;
         _redisConfig = redisConfig.Value;
         _bearerTokenConfig = bearerTokenConfig.Value;
@@ -62,19 +61,14 @@ public class AuthService : IAuthService
             var otpCode = new OtpCode(
                 prefix: _faker.Random.String2(4).ToUpper(),
                 code: _faker.Random.Number(100000, 999999));
-            string key = CommonConstants.Authentication.GetUserOtpKey(mobileNumber, otpCode.RequestId);
 
-            bool savedInRedis = await _redis.GetDatabase()
-                .StringSetAsync(
-                    key,
-                    JsonConvert.SerializeObject(otpCode),
-                    TimeSpan.FromMinutes(_redisConfig.OtpCodeExpiryInMinutes));
-
-            if (!savedInRedis)
+            bool otpCodeIsCached = await _otpCodeRepository.CacheOtpCodeAsync(mobileNumber, otpCode);
+            
+            if (!otpCodeIsCached)
                 return CommonResponses.ErrorResponse
                     .FailedDependencyErrorResponse<OtpCodeResponse>();
 
-            var smsSent = await SendSms(mobileNumber, new SendSmsRequest
+            bool smsSent = await SendSms(mobileNumber, new SendSmsRequest
             {
                 Code = otpCode.Code,
                 Prefix = otpCode.Prefix
@@ -87,7 +81,7 @@ public class AuthService : IAuthService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "[{mobileNumber}] An error occured sending otp to user", mobileNumber);
+            _logger.LogError(e, "{mobileNumber}: An error occured sending otp to user", mobileNumber);
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<OtpCodeResponse>();
         }
     }
@@ -96,20 +90,13 @@ public class AuthService : IAuthService
     {
         try
         {
-            string otpKey = CommonConstants.Authentication.GetUserOtpKey(mobileNumber, request.RequestId);
-            var otpRedisResponse = await _redis.GetDatabase().StringGetAsync(otpKey);
+            var otpCode = await _otpCodeRepository.GetOtpCode(mobileNumber, request.RequestId);
 
-            if (!otpRedisResponse.HasValue)
-                return CommonResponses.ErrorResponse
-                    .BadRequestResponse<LoginResponse>("OTP verification failed");
-
-            var otpData = JsonConvert.DeserializeObject<OtpCode>(otpRedisResponse);
-
-            if (otpData is null)
+            if (otpCode is null)
                 return CommonResponses.ErrorResponse
                     .FailedDependencyErrorResponse<LoginResponse>();
 
-            if (!otpData.Code.Equals(request.Code) || !otpData.Prefix.Equals(request.Prefix))
+            if (!otpCode.Code.Equals(request.Code) || !otpCode.Prefix.Equals(request.Prefix))
                 return CommonResponses.ErrorResponse
                     .BadRequestResponse<LoginResponse>("Incorrect authentication code");
 
@@ -131,7 +118,7 @@ public class AuthService : IAuthService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "[{mobileNumber}] An error occured verifying user otp request\nRequest => {request}",
+            _logger.LogError(e, "{mobileNumber}: An error occured verifying user otp request\nRequest => {request}",
                 mobileNumber, JsonConvert.SerializeObject(request, Formatting.Indented));
 
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<LoginResponse>();
@@ -157,8 +144,9 @@ public class AuthService : IAuthService
 
             if (serverResponse.ResponseMessage.IsSuccessStatusCode) return true;
             
-            var rawResponse = await serverResponse.GetStringAsync();
-            _logger.LogError("[{mobileNumber}] An error occured sending sms to user\nResponse => {response}",
+            string? rawResponse = await serverResponse.GetStringAsync();
+            
+            _logger.LogError("{mobileNumber}: An error occured sending sms to user\nResponse => {response}",
                 mobileNumber, rawResponse);
 
             return false;

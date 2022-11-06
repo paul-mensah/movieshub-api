@@ -34,7 +34,6 @@ public class MoviesController : ControllerBase
     public async Task<IActionResult> GetTopRatedMovies([FromQuery] MoviesFilter filter)
     {
         var response = await _moviesService.GetMoviesList(CommonConstants.Movies.TopRatedMoviesPath, filter);
-
         return StatusCode(response.Code, response);
     }
     
@@ -50,7 +49,6 @@ public class MoviesController : ControllerBase
     public async Task<IActionResult> GetPopularMovies([FromQuery] MoviesFilter filter)
     {
         var response = await _moviesService.GetMoviesList(CommonConstants.Movies.PopularMoviesPath, filter);
-
         return StatusCode(response.Code, response);
     }
     
@@ -82,7 +80,6 @@ public class MoviesController : ControllerBase
     public async Task<IActionResult> GetTrendingMovies([FromQuery] MoviesFilter filter)
     {
         var response = await _moviesService.GetMoviesList(CommonConstants.Movies.TrendingMoviesPath, filter);
-
         return StatusCode(response.Code, response);
     }
 
@@ -99,7 +96,7 @@ public class MoviesController : ControllerBase
     [SwaggerOperation("Get full details about a movie", OperationId = nameof(GetFullMovieDetails))]
     public async Task<IActionResult> GetFullMovieDetails([FromRoute] string movieId)
     {
-        var mobileNumber = User.GetUserData().MobileNumber;
+        string mobileNumber = User.GetUserData().MobileNumber;
         var response = await _moviesService.GetMovieDetails(movieId, mobileNumber);
         return StatusCode(response.Code, response);
     }

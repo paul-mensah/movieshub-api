@@ -50,11 +50,11 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.UnitOfWork" Version="3.1.0" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.7" />
         <PackageReference Include="Npgsql.Json.NET" Version="6.0.7" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.8">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.7">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.8">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.7">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>

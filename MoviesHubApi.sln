@@ -4,6 +4,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{53C58A4E-26D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoviesHub.Api", "src\MoviesHub.Api\MoviesHub.Api.csproj", "{3A984829-A043-4700-AA62-8F20494AA7DC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{450A29D2-4A34-42D5-A7ED-D8938BF5FDE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoviesHub.Tests", "tests\MoviesHub.Tests\MoviesHub.Tests.csproj", "{E3AF9F0E-B554-4D41-A64E-E231FBC4DA8C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,8 +18,13 @@ Global
 		{3A984829-A043-4700-AA62-8F20494AA7DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A984829-A043-4700-AA62-8F20494AA7DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A984829-A043-4700-AA62-8F20494AA7DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E3AF9F0E-B554-4D41-A64E-E231FBC4DA8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3AF9F0E-B554-4D41-A64E-E231FBC4DA8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3AF9F0E-B554-4D41-A64E-E231FBC4DA8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3AF9F0E-B554-4D41-A64E-E231FBC4DA8C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3A984829-A043-4700-AA62-8F20494AA7DC} = {53C58A4E-26D0-426E-ACA7-6B52659ADC69}
+		{E3AF9F0E-B554-4D41-A64E-E231FBC4DA8C} = {450A29D2-4A34-42D5-A7ED-D8938BF5FDE3}
 	EndGlobalSection
 EndGlobal

@@ -34,8 +34,7 @@ public static class ServiceExtensions
                 Contact = new OpenApiContact
                 {
                     Email = "paulmensah1409@gmail.com",
-                    Name = "Paul Mensah",
-                    Url = new Uri("https://paulmensah.dev")
+                    Name = "Paul Mensah"
                 },
                 Version = version,
                 Title = title
@@ -181,6 +180,8 @@ public static class ServiceExtensions
         serviceCollection.AddScoped<IMoviesService, MoviesService>();
         serviceCollection.AddScoped<IUserService, UserService>();
         serviceCollection.AddScoped<IAuthService, AuthService>();
+        serviceCollection.AddScoped<ISmsService, SmsService>();
+        
         serviceCollection.AddScoped<IUserRepository, UserRepository>();
         serviceCollection.AddScoped<IUserCacheRepository, UserCacheRepository>();
         serviceCollection.AddScoped<IFavoriteMovieRepository, FavoriteMovieRepository>();

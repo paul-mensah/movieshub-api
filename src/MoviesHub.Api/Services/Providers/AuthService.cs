@@ -1,7 +1,5 @@
 using AutoMapper;
 using Bogus;
-using Flurl;
-using Flurl.Http;
 using Microsoft.Extensions.Options;
 using MoviesHub.Api.Configurations;
 using MoviesHub.Api.Helpers;
@@ -20,26 +18,23 @@ public class AuthService : IAuthService
     private readonly ILogger<AuthService> _logger;
     private readonly IOtpCodeRepository _otpCodeRepository;
     private readonly IMapper _mapper;
-    private readonly RedisConfig _redisConfig;
-    private readonly HubtelSmsConfig _hubtelSmsConfig;
+    private readonly ISmsService _smsService;
     private readonly Faker _faker;
     private readonly BearerTokenConfig _bearerTokenConfig;
 
-    public AuthService(IOptions<HubtelSmsConfig> hubtelSmsConfig,
-        IUserService userService,
+    public AuthService(IUserService userService,
         ILogger<AuthService> logger,
         IOptions<BearerTokenConfig> bearerTokenConfig,
-        IOptions<RedisConfig> redisConfig,
         IOtpCodeRepository otpCodeRepository,
-        IMapper mapper)
+        IMapper mapper,
+        ISmsService smsService)
     {
         _userService = userService;
         _logger = logger;
         _otpCodeRepository = otpCodeRepository;
         _mapper = mapper;
-        _redisConfig = redisConfig.Value;
+        _smsService = smsService;
         _bearerTokenConfig = bearerTokenConfig.Value;
-        _hubtelSmsConfig = hubtelSmsConfig.Value;
         _faker = new Faker();
     }
 
@@ -68,7 +63,7 @@ public class AuthService : IAuthService
                 return CommonResponses.ErrorResponse
                     .FailedDependencyErrorResponse<OtpCodeResponse>();
 
-            bool smsSent = await SendSms(mobileNumber, new SendSmsRequest
+            bool smsSent = await _smsService.SendSms(mobileNumber, new SendSmsRequest
             {
                 Code = otpCode.Code,
                 Prefix = otpCode.Prefix
@@ -110,6 +105,7 @@ public class AuthService : IAuthService
                     Message = userResponse.Message
                 };
             }
+            
             var tokenResponse = userResponse.Data.GenerateToken(_bearerTokenConfig);
             
             return CommonResponses.SuccessResponse
@@ -122,39 +118,6 @@ public class AuthService : IAuthService
                 mobileNumber, JsonConvert.SerializeObject(request, Formatting.Indented));
 
             return CommonResponses.ErrorResponse.InternalServerErrorResponse<LoginResponse>();
-        }
-    }
-
-    private async Task<bool> SendSms(string mobileNumber, SendSmsRequest request)
-    {
-        try
-        {
-            var url = new Url(_hubtelSmsConfig.BaseUrl);
-            url.SetQueryParams(new
-            {
-                clientid = _hubtelSmsConfig.ClientKey,
-                clientsecret = _hubtelSmsConfig.ClientSecret,
-                from = _hubtelSmsConfig.SenderId,
-                to = mobileNumber,
-                content = CommonConstants.Authentication
-                    .GetOtpSmsContent(request, _redisConfig.OtpCodeExpiryInMinutes)
-            });
-
-            var serverResponse = await url.AllowAnyHttpStatus().GetAsync();
-
-            if (serverResponse.ResponseMessage.IsSuccessStatusCode) return true;
-            
-            string? rawResponse = await serverResponse.GetStringAsync();
-            
-            _logger.LogError("{mobileNumber}: An error occured sending sms to user\nResponse => {response}",
-                mobileNumber, rawResponse);
-
-            return false;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "An error occured sending sms to user:{mobileNumber}", mobileNumber);
-            return false;
         }
     }
 }

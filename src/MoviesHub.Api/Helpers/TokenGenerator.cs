@@ -12,6 +12,16 @@ public static class TokenGenerator
 {
     public static GenerateTokenResponse GenerateToken(this UserResponse user, BearerTokenConfig config)
     {
+        if (user is null)
+        {
+            throw new ArgumentNullException(nameof(user), "User data must not be null or empty");
+        }
+
+        if (config is null)
+        {
+            throw new ArgumentNullException(nameof(config), "Bearer token configuration must not be null or empty");
+        }
+        
         var tokenHandler = new JwtSecurityTokenHandler();
         var securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(config.Key));
         var now = DateTime.UtcNow;

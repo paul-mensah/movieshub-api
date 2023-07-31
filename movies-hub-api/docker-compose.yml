@@ -13,6 +13,7 @@ services:
     restart: always
     depends_on:
       - redis
+      - db
     ports:
       - "5419:443"
     environment:

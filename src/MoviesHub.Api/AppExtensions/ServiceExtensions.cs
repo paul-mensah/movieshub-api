@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -96,16 +97,25 @@ public static class ServiceExtensions
         {
             c.BaseUrl = redisConfig.BaseUrl;
         });
-            
-        ConnectionMultiplexer connectionMultiplexer = ConnectionMultiplexer.Connect(new ConfigurationOptions
+
+        var configurationOptions = new ConfigurationOptions
         {
             EndPoints = { redisConfig.BaseUrl },
             AllowAdmin = true,
             AbortOnConnectFail = false,
             ReconnectRetryPolicy = new LinearRetry(500),
-            DefaultDatabase = redisConfig.Database
-        });
+            DefaultDatabase = redisConfig.Database,
+            Ssl = true
+        };
+        
+        configurationOptions.CertificateSelection += delegate
+        {
+            return new X509Certificate2(redisConfig.CertificatePath, "password");
+            
+        };
 
+        ConnectionMultiplexer connectionMultiplexer = ConnectionMultiplexer.Connect(configurationOptions);
+        
         services.AddSingleton<IConnectionMultiplexer>(connectionMultiplexer);
     }
 

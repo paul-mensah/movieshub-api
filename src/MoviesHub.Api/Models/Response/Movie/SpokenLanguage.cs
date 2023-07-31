@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace MoviesHub.Api.Models.Response.Movie;
 
-public class SpokenLanguage
+public sealed class SpokenLanguage
 {
     [JsonProperty("english_name")]
     public string EnglishName { get; set; }

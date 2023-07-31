@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MoviesHub.Api.Models.Request;
 
-public class FavoriteMovieRequest
+public sealed class FavoriteMovieRequest
 {
     [Required]
     public int MovieId { get; set; }

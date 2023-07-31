@@ -1,6 +1,6 @@
 namespace MoviesHub.Api.Configurations;
 
-public class BearerTokenConfig
+public sealed class BearerTokenConfig
 {
     public string Key { get; set; }
     public string Issuer { get; set; }

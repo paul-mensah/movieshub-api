@@ -1,6 +1,6 @@
 namespace MoviesHub.Api.Models.Response.Movie.Videos;
 
-public class MovieVideo
+public sealed class MovieVideo
 {
     public string Name { get; set; }
     public string Key { get; set; }

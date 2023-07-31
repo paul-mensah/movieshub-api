@@ -1,5 +1,5 @@
 namespace MoviesHub.Api.Models.Response.Auth;
-public class OtpCode
+public sealed class OtpCode
 {
     public string RequestId { get; set; } = Guid.NewGuid().ToString("N");
     public string Prefix { get; set; }

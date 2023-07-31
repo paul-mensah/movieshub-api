@@ -9,8 +9,8 @@ public interface IFavoriteMovieRepository
     Task<bool> AddAsync(FavoriteMovie movie);
     Task<bool> DeleteAsync(FavoriteMovie movie);
     Task<List<FavoriteMovie>> GetFavoriteMovies(string mobileNumber);
-    Task<FavoriteMovie?> GetFavoriteMovieById(string id);
-    Task<FavoriteMovie?> GetUserFavoriteMovieById(string mobileNumber, string movieId);
+    Task<FavoriteMovie> GetFavoriteMovieById(string id);
+    Task<FavoriteMovie> GetUserFavoriteMovieById(string mobileNumber, string movieId);
     Task<bool> IsUserFavoriteMovie(string mobileNumber, int movieId);
 }
 
@@ -45,12 +45,12 @@ public class FavoriteMovieRepository : IFavoriteMovieRepository
             .Where(x => x.UserMobileNumber.Equals(mobileNumber))
             .ToListAsync();
 
-    public async Task<FavoriteMovie?> GetFavoriteMovieById(string id) =>
+    public async Task<FavoriteMovie> GetFavoriteMovieById(string id) =>
         await _dbContext.FavoriteMovies
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id.Equals(id));
 
-    public async Task<FavoriteMovie?> GetUserFavoriteMovieById(string mobileNumber, string movieId) => 
+    public async Task<FavoriteMovie> GetUserFavoriteMovieById(string mobileNumber, string movieId) => 
         await _dbContext.FavoriteMovies
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.MovieId.ToString().Equals(movieId) &&

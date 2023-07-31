@@ -1,6 +1,6 @@
 namespace MoviesHub.Api.Configurations;
 
-public class HubtelSmsConfig
+public sealed class HubtelSmsConfig
 {
     public string BaseUrl { get; set; }
     public string ClientKey { get; set; }

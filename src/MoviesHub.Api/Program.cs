@@ -7,7 +7,7 @@ using MoviesHub.Api.Middlewares;
 using MoviesHub.Api.Storage;
 using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 ServiceExtensions.ConfigureSerilog();
@@ -22,8 +22,6 @@ builder.Services.InitializeRedis(new RedisConfig
 {
     BaseUrl = builder.Configuration["RedisConfig:BaseUrl"]
 });
-
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 builder.Services.AddBearerAuthentication(builder.Configuration);
 
@@ -44,7 +42,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(option =>
 
 builder.Services.Configure<RouteOptions>(o => o.LowercaseUrls = true);
 
-var app = builder.Build();
+WebApplication app = builder.Build();
+
+// Check if there are pending migrations and execute
+app.Services.RunMigrations().GetAwaiter().GetResult();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

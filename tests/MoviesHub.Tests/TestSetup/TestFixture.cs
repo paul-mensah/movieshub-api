@@ -34,8 +34,6 @@ public class TestFixture
         {
             x.UseInMemoryDatabase("holidayLaundryDb");
         }, ServiceLifetime.Transient).AddUnitOfWork<ApplicationDbContext>();
-
-        services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
         
         ServiceProvider = services.BuildServiceProvider();
     }

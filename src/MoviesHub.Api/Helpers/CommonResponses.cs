@@ -29,7 +29,7 @@ public static class CommonResponses
                 Message = FailedDependencyErrorResponseMessage
             };
         
-        public static BaseResponse<T> NotFoundResponse<T>(string? message) =>
+        public static BaseResponse<T> NotFoundResponse<T>(string message) =>
             new BaseResponse<T>
             {
                 Code = (int) HttpStatusCode.NotFound,
@@ -53,7 +53,7 @@ public static class CommonResponses
 
     public static class SuccessResponse
     {
-        public static BaseResponse<T> OkResponse<T>(T data, string? message = null) =>
+        public static BaseResponse<T> OkResponse<T>(T data, string message = null) =>
             new BaseResponse<T>
             {
                 Code = (int) HttpStatusCode.OK,
@@ -61,7 +61,7 @@ public static class CommonResponses
                 Data = data
             };
         
-        public static BaseResponse<T> CreatedResponse<T>(T data, string? message = null) =>
+        public static BaseResponse<T> CreatedResponse<T>(T data, string message = null) =>
             new BaseResponse<T>
             {
                 Code = (int) HttpStatusCode.Created,
@@ -69,7 +69,7 @@ public static class CommonResponses
                 Data = data
             };
         
-        public static BaseResponse<T> UpdatedResponse<T>(T data, string? message = null) =>
+        public static BaseResponse<T> UpdatedResponse<T>(T data, string message = null) =>
             new BaseResponse<T>
             {
                 Code = (int) HttpStatusCode.OK,
@@ -77,7 +77,7 @@ public static class CommonResponses
                 Data = data
             };
         
-        public static BaseResponse<T> DeleteResponse<T>(string? message = null) =>
+        public static BaseResponse<T> DeleteResponse<T>(string message = null) =>
             new BaseResponse<T>
             {
                 Code = (int) HttpStatusCode.OK,

@@ -42,7 +42,7 @@ public class SmsService : ISmsService
 
             if (serverResponse.ResponseMessage.IsSuccessStatusCode) return true;
             
-            string? rawResponse = await serverResponse.GetStringAsync();
+            string rawResponse = await serverResponse.GetStringAsync();
             
             _logger.LogError("{mobileNumber}: An error occured sending sms to user\nResponse => {response}",
                 mobileNumber, rawResponse);

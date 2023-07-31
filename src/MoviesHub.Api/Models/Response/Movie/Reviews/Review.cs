@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace MoviesHub.Api.Models.Response.Movie.Reviews;
 
-public class Review
+public sealed class Review
 {
     public string Id { get; set; }
     public string Author { get; set; }

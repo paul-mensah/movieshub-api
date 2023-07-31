@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MoviesHub.Api.Configurations;
@@ -10,6 +11,7 @@ using MoviesHub.Api.Models.Response;
 using MoviesHub.Api.Repositories;
 using MoviesHub.Api.Services.Interfaces;
 using MoviesHub.Api.Services.Providers;
+using MoviesHub.Api.Storage;
 using Newtonsoft.Json;
 using Serilog;
 using Serilog.Events;
@@ -24,8 +26,8 @@ public static class ServiceExtensions
     {
         if (serviceCollection is null) throw new ArgumentNullException(nameof(serviceCollection));
         
-        var version = configuration["SwaggerConfig:Version"];
-        var title = configuration["SwaggerConfig:Title"];
+        string version = configuration["SwaggerConfig:Version"];
+        string title = configuration["SwaggerConfig:Title"];
 
         serviceCollection.AddSwaggerGen(c =>
         {
@@ -95,7 +97,7 @@ public static class ServiceExtensions
             c.BaseUrl = redisConfig.BaseUrl;
         });
             
-        var connectionMultiplexer = ConnectionMultiplexer.Connect(new ConfigurationOptions
+        ConnectionMultiplexer connectionMultiplexer = ConnectionMultiplexer.Connect(new ConfigurationOptions
         {
             EndPoints = { redisConfig.BaseUrl },
             AllowAdmin = true,
@@ -124,15 +126,15 @@ public static class ServiceExtensions
                 {
                     await Task.Delay(0);
                             
-                    var user = context.Principal.FindFirst(c => c.Type == ClaimTypes.Thumbprint).Value;
-                    var userData = JsonConvert.DeserializeObject<UserResponse>(user);
+                    string user = context.Principal.FindFirst(c => c.Type == ClaimTypes.Thumbprint).Value;
+                    UserResponse userData = JsonConvert.DeserializeObject<UserResponse>(user);
                             
                     var claims = new List<Claim>
                     {
                         new Claim(ClaimTypes.Thumbprint, JsonConvert.SerializeObject(userData)),
                     };
                             
-                    var appIdentity = new ClaimsIdentity(claims, CommonConstants.Authentication.AppAuthIdentity);
+                    ClaimsIdentity appIdentity = new ClaimsIdentity(claims, CommonConstants.Authentication.AppAuthIdentity);
                     context.Principal.AddIdentity(appIdentity);
                 }
             };
@@ -149,8 +151,8 @@ public static class ServiceExtensions
 
     public static void ConfigureSerilog()
     {
-        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        var configuration = new ConfigurationBuilder()
+        string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        IConfigurationRoot configuration = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json",
                 optional: true)
@@ -168,7 +170,7 @@ public static class ServiceExtensions
             {
                 AutoRegisterTemplate = true,
                 IndexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name!.ToLower().Replace(".", "-")}-" +
-                              $"{environment?.ToLower().Replace(".", "-")}"
+                              $"{environment.ToLower().Replace(".", "-")}"
             })
             .ReadFrom.Configuration(configuration)
             .CreateLogger();
@@ -191,6 +193,29 @@ public static class ServiceExtensions
         serviceCollection.Configure<TheMovieDbConfig>(configuration.GetSection(nameof(TheMovieDbConfig)));
         serviceCollection.Configure<RedisConfig>(configuration.GetSection(nameof(RedisConfig)));
         serviceCollection.Configure<HubtelSmsConfig>(configuration.GetSection(nameof(HubtelSmsConfig)));
+    }
+    
+    public static async Task RunMigrations(this IServiceProvider serviceProvider)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+        try
+        {
+            using IServiceScope scope = serviceProvider.CreateScope();
+            ApplicationDbContext dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+            int pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).Count();
+            
+            if (pendingMigrations >= 1)
+            {
+                await dbContext.Database.MigrateAsync();
+                logger.LogDebug("{pendingMigrations} migrations successfully executed ", pendingMigrations);
+            }
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "An error occured executing pending migrations");
+        }
     }
     
 }

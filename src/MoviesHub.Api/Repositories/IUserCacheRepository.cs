@@ -22,7 +22,7 @@ public class UserCacheRepository : IUserCacheRepository
         _redis = redis;
     }
 
-    public async Task<User?> GetUserByMobileNumberAsync(string mobileNumber)
+    public async Task<User> GetUserByMobileNumberAsync(string mobileNumber)
     {
         try
         {
@@ -61,6 +61,6 @@ public class UserCacheRepository : IUserCacheRepository
 
 public interface IUserCacheRepository
 {
-    Task<User?> GetUserByMobileNumberAsync(string mobileNumber);
+    Task<User> GetUserByMobileNumberAsync(string mobileNumber);
     Task<bool> CacheUserAccount(User user);
 }

@@ -11,7 +11,6 @@ using MoviesHub.Api.Models.Response.Movie.Videos;
 using MoviesHub.Api.Repositories;
 using MoviesHub.Api.Services.Interfaces;
 using Newtonsoft.Json;
-using StackExchange.Redis;
 
 namespace MoviesHub.Api.Services.Providers;
 
@@ -19,19 +18,16 @@ public class MoviesService : IMoviesService
 {
     private readonly ILogger<MoviesService> _logger;
     private readonly IMoviesHttpService _moviesHttpService;
-    private readonly IConnectionMultiplexer _redis;
     private readonly IFavoriteMovieRepository _favoriteMovieRepository;
     private readonly TheMovieDbConfig _theMovieDbConfig;
 
     public MoviesService(ILogger<MoviesService> logger,
         IMoviesHttpService moviesHttpService,
         IOptions<TheMovieDbConfig> theMovieDbConfig,
-        IConnectionMultiplexer redis,
         IFavoriteMovieRepository favoriteMovieRepository)
     {
         _logger = logger;
         _moviesHttpService = moviesHttpService;
-        _redis = redis;
         _favoriteMovieRepository = favoriteMovieRepository;
         _theMovieDbConfig = theMovieDbConfig.Value;
     }
@@ -53,8 +49,7 @@ public class MoviesService : IMoviesService
             return !getMoviesResponse.IsSuccessful
                 ? CommonResponses.ErrorResponse.FailedDependencyErrorResponse<PaginatedMoviesListResponse>()
                 : CommonResponses.SuccessResponse
-                    .OkResponse<PaginatedMoviesListResponse>(
-                        JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(getMoviesResponse.Data));
+                    .OkResponse(JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(getMoviesResponse.Data));
         }
         catch (Exception e)
         {
@@ -107,9 +102,9 @@ public class MoviesService : IMoviesService
             
             var similarMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponseList[1].Data!);
             var recommendedMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponseList[2].Data!);
-            var credit = JsonConvert.DeserializeObject<MovieCredit>(fullMovieResponseList[3].Data!);
-            var reviews = JsonConvert.DeserializeObject<MovieReviews>(fullMovieResponseList[4].Data!);
-            var videos = JsonConvert.DeserializeObject<MovieVideos>(fullMovieResponseList[5].Data!);
+            var credit = JsonConvert.DeserializeObject<MovieCredit>(fullMovieResponseList[3].Data);
+            var reviews = JsonConvert.DeserializeObject<MovieReviews>(fullMovieResponseList[4].Data);
+            var videos = JsonConvert.DeserializeObject<MovieVideos>(fullMovieResponseList[5].Data);
 
             bool isFavoriteMovie = false;
 

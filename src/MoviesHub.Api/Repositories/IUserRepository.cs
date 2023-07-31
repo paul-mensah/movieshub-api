@@ -13,12 +13,12 @@ public class UserRepository : IUserRepository
         _dbContext = dbContext;
     }
 
-    public async Task<User?> GetUserByMobileNumberAsync(string mobileNumber) =>
+    public async Task<User> GetUserByMobileNumberAsync(string mobileNumber) =>
         await _dbContext.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.MobileNumber.Equals(mobileNumber));
     
-    public async Task<User?> GetUserByIdAsync(string id) =>
+    public async Task<User> GetUserByIdAsync(string id) =>
         await _dbContext.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(x => 
@@ -35,7 +35,7 @@ public class UserRepository : IUserRepository
 
 public interface IUserRepository
 {
-    Task<User?> GetUserByMobileNumberAsync(string mobileNumber);
-    Task<User?> GetUserByIdAsync(string id);
+    Task<User> GetUserByMobileNumberAsync(string mobileNumber);
+    Task<User> GetUserByIdAsync(string id);
     Task<bool> CreateAsync(User user);
 }

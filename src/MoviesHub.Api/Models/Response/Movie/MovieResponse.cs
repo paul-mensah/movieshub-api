@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace MoviesHub.Api.Models.Response.Movie;
 
-public class MovieResponse : BaseMovieResponse
+public sealed class MovieResponse : BaseMovieResponse
 {
     public decimal Budget { get; set; }
     public decimal Revenue { get; set; }

@@ -8,6 +8,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{450A29D2
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoviesHub.Tests", "tests\MoviesHub.Tests\MoviesHub.Tests.csproj", "{E3AF9F0E-B554-4D41-A64E-E231FBC4DA8C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "movies-hub-api", "movies-hub-api", "{D4DC6DEB-B3E7-4BB8-9CE5-48C23B3DB2CA}"
+	ProjectSection(SolutionItems) = preProject
+		movies-hub-api\docker-compose.yml = movies-hub-api\docker-compose.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

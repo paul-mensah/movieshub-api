@@ -10,7 +10,7 @@ namespace MoviesHub.Api.Repositories;
 public interface IOtpCodeRepository
 {
     Task<bool> CacheOtpCodeAsync(string mobileNumber, OtpCode otpCode);
-    Task<OtpCode?> GetOtpCode(string mobileNumber, string requestId);
+    Task<OtpCode> GetOtpCode(string mobileNumber, string requestId);
 }
 
 public class OtpCodeRepository : IOtpCodeRepository
@@ -49,7 +49,7 @@ public class OtpCodeRepository : IOtpCodeRepository
         }
     }
 
-    public async Task<OtpCode?> GetOtpCode(string mobileNumber, string requestId)
+    public async Task<OtpCode> GetOtpCode(string mobileNumber, string requestId)
     {
         try
         {

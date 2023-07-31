@@ -1,6 +1,6 @@
 namespace MoviesHub.Api.Models.Response.Movie;
 
-public class FavoriteMovieResponse
+public sealed class FavoriteMovieResponse
 {
     public string Id { get; set; }
     public int MovieId { get; set; }

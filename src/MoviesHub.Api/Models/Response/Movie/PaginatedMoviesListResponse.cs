@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace MoviesHub.Api.Models.Response.Movie;
 
-public class PaginatedMoviesListResponse
+public sealed class PaginatedMoviesListResponse
 {
     public int Page { get; set; }
     [JsonProperty("total_pages")]

@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace MoviesHub.Api.Models.Response.Movie;
 
-public class ProductionCountry
+public sealed class ProductionCountry
 {
     [JsonProperty("iso_3166_1")]
     public string IsoName { get; set; }

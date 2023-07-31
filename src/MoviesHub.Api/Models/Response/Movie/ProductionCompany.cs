@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace MoviesHub.Api.Models.Response.Movie;
 
-public class ProductionCompany
+public sealed class ProductionCompany
 {
     public int Id { get; set; }
     [JsonProperty("logo_path")]

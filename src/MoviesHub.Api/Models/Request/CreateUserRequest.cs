@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MoviesHub.Api.Models.Request;
 
-public class CreateUserRequest
+public sealed class CreateUserRequest
 {
     [Required(AllowEmptyStrings = false)]
     public string FirstName { get; set; }

@@ -1,6 +1,6 @@
 namespace MoviesHub.Api.Models.Response;
 
-public class UserResponse
+public sealed class UserResponse
 {
     public string Id { get; set; }
     public string FirstName { get; set; }

@@ -1,4 +1,4 @@
-using AutoMapper;
+using Mapster;
 using MoviesHub.Api.Helpers;
 using MoviesHub.Api.Models.Request;
 using MoviesHub.Api.Models.Response;
@@ -16,19 +16,16 @@ public class UserService : IUserService
     private readonly IUserRepository _userRepository;
     private readonly IUserCacheRepository _userCacheRepository;
     private readonly IFavoriteMovieRepository _favoriteMovieRepository;
-    private readonly IMapper _mapper;
 
     public UserService(ILogger<UserService> logger,
         IUserRepository userRepository,
         IUserCacheRepository userCacheRepository,
-        IFavoriteMovieRepository favoriteMovieRepository,
-        IMapper mapper)
+        IFavoriteMovieRepository favoriteMovieRepository)
     {
         _logger = logger;
         _userRepository = userRepository;
         _userCacheRepository = userCacheRepository;
         _favoriteMovieRepository = favoriteMovieRepository;
-        _mapper = mapper;
     }
     
     public async Task<BaseResponse<UserResponse>> CreateUserAccount(CreateUserRequest request)
@@ -47,7 +44,7 @@ public class UserService : IUserService
                     .ConflictResponse<UserResponse>("User account already created");
             }
 
-            var newUserAccount = _mapper.Map<User>(request);
+            var newUserAccount = request.Adapt<User>();
 
             /*
              * Create in DB and cache if successful
@@ -70,7 +67,7 @@ public class UserService : IUserService
                     request.MobileNumber, JsonConvert.SerializeObject(request, Formatting.Indented));
             }
 
-            var userResponse = _mapper.Map<UserResponse>(newUserAccount);
+            var userResponse = newUserAccount.Adapt<UserResponse>();
             return CommonResponses.SuccessResponse.CreatedResponse(userResponse);
         }
         catch (Exception e)
@@ -98,7 +95,7 @@ public class UserService : IUserService
                     .NotFoundResponse<UserResponse>("User not found");
             }
 
-            var userResponse = _mapper.Map<UserResponse>(user);
+            var userResponse = user.Adapt<UserResponse>();
             return CommonResponses.SuccessResponse.OkResponse(userResponse);
         }
         catch (Exception e)
@@ -113,13 +110,13 @@ public class UserService : IUserService
     {
         try
         {
-            var favoriteMovie = _mapper.Map<FavoriteMovie>(request);
+            var favoriteMovie = request.Adapt<FavoriteMovie>();
             favoriteMovie.UserMobileNumber = mobileNumber;
 
             bool isSaved = await _favoriteMovieRepository.AddAsync(favoriteMovie);
 
             return isSaved
-                ? CommonResponses.SuccessResponse.CreatedResponse(_mapper.Map<FavoriteMovieResponse>(favoriteMovie))
+                ? CommonResponses.SuccessResponse.CreatedResponse(favoriteMovie.Adapt<FavoriteMovieResponse>())
                 : CommonResponses.ErrorResponse.FailedDependencyErrorResponse<FavoriteMovieResponse>();
         }
         catch (Exception e)
@@ -164,7 +161,7 @@ public class UserService : IUserService
             var favoriteMoviesList = await _favoriteMovieRepository.GetFavoriteMovies(mobileNumber);
 
             var favoriteMoviesResponseEnumerable = favoriteMoviesList
-                .Select(x => _mapper.Map<FavoriteMovieResponse>(x))
+                .Select(x => x.Adapt<FavoriteMovieResponse>())
                 .AsEnumerable();
 
             return CommonResponses.SuccessResponse.OkResponse(favoriteMoviesResponseEnumerable);

@@ -8,8 +8,16 @@ EXPOSE 443
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
 COPY ["src/MoviesHub.Api/MoviesHub.Api.csproj", "src/MoviesHub.Api/"]
+
 RUN dotnet restore "src/MoviesHub.Api/MoviesHub.Api.csproj"
+
 COPY . .
+
+RUN dotnet new tool-manifest
+RUN dotnet tool install dotnet-ef
+RUN dotnet dev-certs https --clean
+RUN dotnet dev-certs https -ep ${HOME}/.aspnet/https/aspnetapp.pfx -p password
+
 WORKDIR "/src/src/MoviesHub.Api"
 RUN dotnet build "MoviesHub.Api.csproj" -c Release -o /app/build
 
@@ -18,5 +26,6 @@ RUN dotnet publish "MoviesHub.Api.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
+EXPOSE 5419
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "MoviesHub.Api.dll"]

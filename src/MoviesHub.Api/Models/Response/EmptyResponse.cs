@@ -1,6 +1,6 @@
 namespace MoviesHub.Api.Models.Response;
 
-public class EmptyResponse
+public sealed class EmptyResponse
 {
     
 }

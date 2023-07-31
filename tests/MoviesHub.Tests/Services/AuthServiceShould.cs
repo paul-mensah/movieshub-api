@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using AutoMapper;
 using Bogus;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,7 +37,6 @@ public class AuthServiceShould : IClassFixture<TestFixture>
     private AuthService GetAuthService()
     {
         var logger = _fixture.ServiceProvider.GetRequiredService<ILogger<AuthService>>();
-        var mapper = _fixture.ServiceProvider.GetRequiredService<IMapper>();
         var bearerTokenConfig = _fixture.ServiceProvider.GetRequiredService<IOptions<BearerTokenConfig>>();
 
         return new AuthService(
@@ -46,7 +44,6 @@ public class AuthServiceShould : IClassFixture<TestFixture>
             logger: logger,
             bearerTokenConfig: bearerTokenConfig,
             otpCodeRepository: _otpCodeRepositoryMock.Object,
-            mapper: mapper,
             smsService: _smsServiceMock.Object);
     }
 

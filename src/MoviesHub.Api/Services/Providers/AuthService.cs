@@ -1,5 +1,5 @@
-using AutoMapper;
 using Bogus;
+using Mapster;
 using Microsoft.Extensions.Options;
 using MoviesHub.Api.Configurations;
 using MoviesHub.Api.Helpers;
@@ -17,7 +17,6 @@ public class AuthService : IAuthService
     private readonly IUserService _userService;
     private readonly ILogger<AuthService> _logger;
     private readonly IOtpCodeRepository _otpCodeRepository;
-    private readonly IMapper _mapper;
     private readonly ISmsService _smsService;
     private readonly Faker _faker;
     private readonly BearerTokenConfig _bearerTokenConfig;
@@ -26,13 +25,11 @@ public class AuthService : IAuthService
         ILogger<AuthService> logger,
         IOptions<BearerTokenConfig> bearerTokenConfig,
         IOtpCodeRepository otpCodeRepository,
-        IMapper mapper,
         ISmsService smsService)
     {
         _userService = userService;
         _logger = logger;
         _otpCodeRepository = otpCodeRepository;
-        _mapper = mapper;
         _smsService = smsService;
         _bearerTokenConfig = bearerTokenConfig.Value;
         _faker = new Faker();
@@ -71,7 +68,7 @@ public class AuthService : IAuthService
 
             if (!smsSent) return CommonResponses.ErrorResponse.InternalServerErrorResponse<OtpCodeResponse>();
 
-            var otpCodeResponse = _mapper.Map<OtpCodeResponse>(otpCode);
+            var otpCodeResponse = otpCode.Adapt<OtpCodeResponse>();
             return CommonResponses.SuccessResponse.OkResponse(otpCodeResponse, "OTP code sent successfully");
         }
         catch (Exception e)

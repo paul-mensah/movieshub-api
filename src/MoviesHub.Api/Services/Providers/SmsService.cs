@@ -25,34 +25,26 @@ public class SmsService : ISmsService
     
     public async Task<bool> SendSms(string mobileNumber, SendSmsRequest request)
     {
-        try
+        var url = new Url(_hubtelSmsConfig.BaseUrl);
+        url.SetQueryParams(new
         {
-            var url = new Url(_hubtelSmsConfig.BaseUrl);
-            url.SetQueryParams(new
-            {
-                clientid = _hubtelSmsConfig.ClientKey,
-                clientsecret = _hubtelSmsConfig.ClientSecret,
-                from = _hubtelSmsConfig.SenderId,
-                to = mobileNumber,
-                content = CommonConstants.Authentication
-                    .GetOtpSmsContent(request, _redisConfig.OtpCodeExpiryInMinutes)
-            });
+            clientid = _hubtelSmsConfig.ClientKey,
+            clientsecret = _hubtelSmsConfig.ClientSecret,
+            from = _hubtelSmsConfig.SenderId,
+            to = mobileNumber,
+            content = CommonConstants.Authentication
+                .GetOtpSmsContent(request, _redisConfig.OtpCodeExpiryInMinutes)
+        });
 
-            var serverResponse = await url.AllowAnyHttpStatus().GetAsync();
+        var serverResponse = await url.AllowAnyHttpStatus().GetAsync();
 
-            if (serverResponse.ResponseMessage.IsSuccessStatusCode) return true;
-            
-            string rawResponse = await serverResponse.GetStringAsync();
-            
-            _logger.LogError("{mobileNumber}: An error occured sending sms to user\nResponse => {response}",
-                mobileNumber, rawResponse);
+        if (serverResponse.ResponseMessage.IsSuccessStatusCode) return true;
+        
+        string rawResponse = await serverResponse.GetStringAsync();
+        
+        _logger.LogError("{mobileNumber}: An error occured sending sms to user\nResponse => {response}",
+            mobileNumber, rawResponse);
 
-            return false;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "An error occured sending sms to user:{mobileNumber}", mobileNumber);
-            return false;
-        }
+        return false;
     }
 }

@@ -58,4 +58,8 @@
         </PackageReference>
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="Properties\PublishProfiles\registry.hub.docker.com_paulmensah.pubxml" />
+    </ItemGroup>
+
 </Project>

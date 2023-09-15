@@ -17,7 +17,7 @@ public static class GlobalExceptionHandler
                 context.Response.ContentType = MediaTypeNames.Application.Json;
                 context.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
 
-                var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
+                IExceptionHandlerFeature exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
                 if (exceptionHandlerFeature is not null)
                 {
                     var baseException = exceptionHandlerFeature.Error;

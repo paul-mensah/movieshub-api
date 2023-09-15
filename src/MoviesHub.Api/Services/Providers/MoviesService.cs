@@ -16,17 +16,14 @@ namespace MoviesHub.Api.Services.Providers;
 
 public class MoviesService : IMoviesService
 {
-    private readonly ILogger<MoviesService> _logger;
     private readonly IMoviesHttpService _moviesHttpService;
     private readonly IFavoriteMovieRepository _favoriteMovieRepository;
     private readonly TheMovieDbConfig _theMovieDbConfig;
 
-    public MoviesService(ILogger<MoviesService> logger,
-        IMoviesHttpService moviesHttpService,
+    public MoviesService(IMoviesHttpService moviesHttpService,
         IOptions<TheMovieDbConfig> theMovieDbConfig,
         IFavoriteMovieRepository favoriteMovieRepository)
     {
-        _logger = logger;
         _moviesHttpService = moviesHttpService;
         _favoriteMovieRepository = favoriteMovieRepository;
         _theMovieDbConfig = theMovieDbConfig.Value;
@@ -34,110 +31,92 @@ public class MoviesService : IMoviesService
 
     public async Task<BaseResponse<PaginatedMoviesListResponse>> GetMoviesList(string path, MoviesFilter filter)
     {
-        try
+        var url = new Url(_theMovieDbConfig.BaseUrl).AppendPathSegment(path);
+        url.SetQueryParams(new 
         {
-            var url = new Url(_theMovieDbConfig.BaseUrl).AppendPathSegment(path);
-            url.SetQueryParams(new 
-            {
-                api_key = _theMovieDbConfig.ApiKey,
-                filter.Language,
-                filter.Page
-            });
-            
-            var getMoviesResponse = await _moviesHttpService.GetAsync(url);
+            api_key = _theMovieDbConfig.ApiKey,
+            filter.Language,
+            filter.Page
+        });
+        
+        var getMoviesResponse = await _moviesHttpService.GetAsync(url);
 
-            return !getMoviesResponse.IsSuccessful
-                ? CommonResponses.ErrorResponse.FailedDependencyErrorResponse<PaginatedMoviesListResponse>()
-                : CommonResponses.SuccessResponse
-                    .OkResponse(JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(getMoviesResponse.Data));
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "An error occured getting movies\nPath => {path}\nFilter => {filter}", 
-                path, JsonConvert.SerializeObject(filter, Formatting.Indented));
-            
-            return CommonResponses.ErrorResponse.InternalServerErrorResponse<PaginatedMoviesListResponse>();
-        }
+        return !getMoviesResponse.IsSuccessful
+            ? CommonResponses.ErrorResponse.FailedDependencyErrorResponse<PaginatedMoviesListResponse>()
+            : CommonResponses.SuccessResponse
+                .OkResponse(JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(getMoviesResponse.Data));
     }
 
     public async Task<BaseResponse<FullMovieResponse>> GetMovieDetails(string id, string mobileNumber)
     {
-        try
+        string apiKey = _theMovieDbConfig.ApiKey;
+        string baseUrl = _theMovieDbConfig.BaseUrl;
+
+        var movieDetailsTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}?api_key={apiKey}");
+        var creditTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/credits?api_key={apiKey}");
+        var reviewsTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/reviews?api_key={apiKey}");
+        var videosTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/videos?api_key={apiKey}");
+        var similarMoviesListTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/similar?api_key={apiKey}");
+        var recommendedMoviesListTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/recommendations?api_key={apiKey}");
+
+        var tasksList = new[]
         {
-            string apiKey = _theMovieDbConfig.ApiKey;
-            string baseUrl = _theMovieDbConfig.BaseUrl;
+            movieDetailsTask,
+            similarMoviesListTask,
+            recommendedMoviesListTask,
+            creditTask,
+            reviewsTask,
+            videosTask
+        };
 
-            var movieDetailsTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}?api_key={apiKey}");
-            var creditTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/credits?api_key={apiKey}");
-            var reviewsTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/reviews?api_key={apiKey}");
-            var videosTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/videos?api_key={apiKey}");
-            var similarMoviesListTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/similar?api_key={apiKey}");
-            var recommendedMoviesListTask = _moviesHttpService.GetAsync($"{baseUrl}/movie/{id}/recommendations?api_key={apiKey}");
+        var fullMovieResponseList = await Task.WhenAll(tasksList);
 
-            var tasksList = new[]
-            {
-                movieDetailsTask,
-                similarMoviesListTask,
-                recommendedMoviesListTask,
-                creditTask,
-                reviewsTask,
-                videosTask
-            };
+        var movieResponse = fullMovieResponseList.FirstOrDefault();
 
-            var fullMovieResponseList = await Task.WhenAll(tasksList);
-
-            var movieResponse = fullMovieResponseList.FirstOrDefault();
-
-            if (movieResponse is not null && !movieResponse.IsSuccessful)
-            {
-                return CommonResponses.ErrorResponse.NotFoundResponse<FullMovieResponse>("Movie not found");
-            }
-
-            var movieDetails = JsonConvert.DeserializeObject<MovieResponse>(movieResponse?.Data!);
-
-            if (movieDetails is null)
-            {
-                return CommonResponses.ErrorResponse.NotFoundResponse<FullMovieResponse>("Movie not found");
-            }
-            
-            var similarMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponseList[1].Data!);
-            var recommendedMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponseList[2].Data!);
-            var credit = JsonConvert.DeserializeObject<MovieCredit>(fullMovieResponseList[3].Data);
-            var reviews = JsonConvert.DeserializeObject<MovieReviews>(fullMovieResponseList[4].Data);
-            var videos = JsonConvert.DeserializeObject<MovieVideos>(fullMovieResponseList[5].Data);
-
-            bool isFavoriteMovie = false;
-
-            if (!string.IsNullOrEmpty(mobileNumber))
-            {
-                isFavoriteMovie = await _favoriteMovieRepository.IsUserFavoriteMovie(mobileNumber, movieDetails.Id);
-            }
-
-            var fullMovieResponse = new FullMovieResponse
-            {
-                Movie = movieDetails,
-                Credits = credit,
-                Reviews = reviews,
-                Videos = videos,
-                IsFavoriteMovie = isFavoriteMovie
-            };
-
-            if (similarMoviesList is not null &&  similarMoviesList.Results.Any())
-            {
-                fullMovieResponse.SimilarMovies = similarMoviesList.Results.GetRandomMovies(10);
-            }
-            
-            if (recommendedMoviesList is not null &&  recommendedMoviesList.Results.Any())
-            {
-                fullMovieResponse.RecommendedMovies = recommendedMoviesList.Results.GetRandomMovies(10);
-            }
-            
-            return CommonResponses.SuccessResponse.OkResponse(fullMovieResponse);
-        }
-        catch (Exception e)
+        if (movieResponse is not null && !movieResponse.IsSuccessful)
         {
-            _logger.LogError(e, "[movie:{id}] An error occured getting full movie details", id);
-            return CommonResponses.ErrorResponse.InternalServerErrorResponse<FullMovieResponse>();
+            return CommonResponses.ErrorResponse.NotFoundResponse<FullMovieResponse>("Movie not found");
         }
+
+        var movieDetails = JsonConvert.DeserializeObject<MovieResponse>(movieResponse?.Data!);
+
+        if (movieDetails is null)
+        {
+            return CommonResponses.ErrorResponse.NotFoundResponse<FullMovieResponse>("Movie not found");
+        }
+        
+        var similarMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponseList[1].Data!);
+        var recommendedMoviesList = JsonConvert.DeserializeObject<PaginatedMoviesListResponse>(fullMovieResponseList[2].Data!);
+        var credit = JsonConvert.DeserializeObject<MovieCredit>(fullMovieResponseList[3].Data);
+        var reviews = JsonConvert.DeserializeObject<MovieReviews>(fullMovieResponseList[4].Data);
+        var videos = JsonConvert.DeserializeObject<MovieVideos>(fullMovieResponseList[5].Data);
+
+        bool isFavoriteMovie = false;
+
+        if (!string.IsNullOrEmpty(mobileNumber))
+        {
+            isFavoriteMovie = await _favoriteMovieRepository.IsUserFavoriteMovie(mobileNumber, movieDetails.Id);
+        }
+
+        var fullMovieResponse = new FullMovieResponse
+        {
+            Movie = movieDetails,
+            Credits = credit,
+            Reviews = reviews,
+            Videos = videos,
+            IsFavoriteMovie = isFavoriteMovie
+        };
+
+        if (similarMoviesList is not null &&  similarMoviesList.Results.Any())
+        {
+            fullMovieResponse.SimilarMovies = similarMoviesList.Results.GetRandomMovies(10);
+        }
+        
+        if (recommendedMoviesList is not null &&  recommendedMoviesList.Results.Any())
+        {
+            fullMovieResponse.RecommendedMovies = recommendedMoviesList.Results.GetRandomMovies(10);
+        }
+        
+        return CommonResponses.SuccessResponse.OkResponse(fullMovieResponse);
     }
 }

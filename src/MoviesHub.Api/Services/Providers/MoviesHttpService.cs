@@ -15,26 +15,18 @@ namespace MoviesHub.Api.Services.Providers
 
       public async Task<MoviesHttpResponse> GetAsync(string url)
       {
-          try
-          {
-              if (string.IsNullOrEmpty(url))
-                  return new MoviesHttpResponse(false, null);
-              
-              var apiResponse = await url.AllowAnyHttpStatus().GetAsync();
-              var rawResponse = await apiResponse.ResponseMessage.Content.ReadAsStringAsync();
-              
-              _logger.LogInformation("Response from movies api\nUrl => {url}\nResponse => {movieApiResponse}", 
-                  url, rawResponse);
-
-              return new MoviesHttpResponse(
-                  isSuccessful: apiResponse.ResponseMessage.IsSuccessStatusCode, 
-                  data: rawResponse);
-          }
-          catch (Exception e)
-          {
-              _logger.LogError(e, "An error occured getting record with\nUrl => {url}", url);
+          if (string.IsNullOrEmpty(url))
               return new MoviesHttpResponse(false, null);
-          }
+          
+          var apiResponse = await url.AllowAnyHttpStatus().GetAsync();
+          var rawResponse = await apiResponse.ResponseMessage.Content.ReadAsStringAsync();
+          
+          _logger.LogInformation("Response from movies api\nUrl => {url}\nResponse => {movieApiResponse}", 
+              url, rawResponse);
+
+          return new MoviesHttpResponse(
+              isSuccessful: apiResponse.ResponseMessage.IsSuccessStatusCode, 
+              data: rawResponse);
       }
   }
 }

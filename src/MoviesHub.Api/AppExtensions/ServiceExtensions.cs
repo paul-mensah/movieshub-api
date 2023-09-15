@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Security.Claims;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using Arch.EntityFrameworkCore.UnitOfWork;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -23,7 +23,7 @@ namespace MoviesHub.Api.AppExtensions;
 
 public static class ServiceExtensions
 {
-    public static void InitializeSwagger(this IServiceCollection serviceCollection, IConfiguration configuration)
+    private static IServiceCollection InitializeSwagger(this IServiceCollection serviceCollection, IConfiguration configuration)
     {
         if (serviceCollection is null) throw new ArgumentNullException(nameof(serviceCollection));
         
@@ -76,6 +76,8 @@ public static class ServiceExtensions
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
             c.IncludeXmlComments(xmlPath);
         });
+
+        return serviceCollection;
     }
 
     public static void UseSwaggerDocumentation(this IApplicationBuilder applicationBuilder, IConfiguration configuration)
@@ -88,38 +90,32 @@ public static class ServiceExtensions
             c.SwaggerEndpoint("/swagger/v1/swagger.json", title);
         });
     }
-    
-    public static void InitializeRedis(this IServiceCollection services, RedisConfig redisConfig)
+
+    private static IServiceCollection InitializeRedis(this IServiceCollection services, Action<RedisConfig> redisConfig)
     {
         if (services is null) throw new ArgumentNullException(nameof(services));
-        
-        services.Configure<RedisConfig>(c =>
-        {
-            c.BaseUrl = redisConfig.BaseUrl;
-        });
 
-        var configurationOptions = new ConfigurationOptions
+        services.Configure(redisConfig);
+
+        var redisConfiguration = new RedisConfig();
+        redisConfig.Invoke(redisConfiguration);
+        
+        var connectionMultiplexer = ConnectionMultiplexer.Connect(new ConfigurationOptions
         {
-            EndPoints = { redisConfig.BaseUrl },
+            EndPoints = { redisConfiguration.BaseUrl },
             AllowAdmin = true,
             AbortOnConnectFail = false,
             ReconnectRetryPolicy = new LinearRetry(500),
-            DefaultDatabase = redisConfig.Database,
-            Ssl = true
-        };
-        
-        configurationOptions.CertificateSelection += delegate
-        {
-            return new X509Certificate2(redisConfig.CertificatePath, "password");
-            
-        };
+            DefaultDatabase = redisConfiguration.Database
+        });
 
-        ConnectionMultiplexer connectionMultiplexer = ConnectionMultiplexer.Connect(configurationOptions);
-        
         services.AddSingleton<IConnectionMultiplexer>(connectionMultiplexer);
+        services.AddSingleton<IRedisService, RedisService>();
+
+        return services;
     }
 
-    public static void AddBearerAuthentication(this IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection AddBearerAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         if (services is null) throw new ArgumentNullException(nameof(services));
         
@@ -157,6 +153,8 @@ public static class ServiceExtensions
                 ValidAudience = configuration["BearerTokenConfig:Audience"],
             };
         });
+
+        return services;
     }
 
     public static void ConfigureSerilog()
@@ -186,23 +184,35 @@ public static class ServiceExtensions
             .CreateLogger();
     }
     
-    public static void AddCustomServicesAndConfigurations(this IServiceCollection serviceCollection, IConfiguration configuration)
+    public static IServiceCollection AddCustomServicesAndConfigurations(this IServiceCollection serviceCollection, IConfiguration configuration)
     {
-        serviceCollection.AddScoped<IMoviesHttpService, MoviesHttpService>();
-        serviceCollection.AddScoped<IMoviesService, MoviesService>();
-        serviceCollection.AddScoped<IUserService, UserService>();
-        serviceCollection.AddScoped<IAuthService, AuthService>();
-        serviceCollection.AddScoped<ISmsService, SmsService>();
+        serviceCollection
+            .Configure<BearerTokenConfig>(configuration.GetSection(nameof(BearerTokenConfig)))
+            .Configure<TheMovieDbConfig>(configuration.GetSection(nameof(TheMovieDbConfig)))
+            .Configure<RedisConfig>(configuration.GetSection(nameof(RedisConfig)))
+            .Configure<HubtelSmsConfig>(configuration.GetSection(nameof(HubtelSmsConfig)));
         
-        serviceCollection.AddScoped<IUserRepository, UserRepository>();
-        serviceCollection.AddScoped<IUserCacheRepository, UserCacheRepository>();
-        serviceCollection.AddScoped<IFavoriteMovieRepository, FavoriteMovieRepository>();
-        serviceCollection.AddScoped<IOtpCodeRepository, OtpCodeRepository>();
+        serviceCollection.InitializeSwagger(configuration)
+            .InitializeRedis(c => configuration.GetSection(nameof(RedisConfig)).Bind(c))
+            .AddBearerAuthentication(configuration)
+            .AddDbContext<ApplicationDbContext>(option =>
+            {
+                option.UseNpgsql(configuration.GetConnectionString("DbConnection"));
+            },
+            ServiceLifetime.Transient).AddUnitOfWork<ApplicationDbContext>();
 
-        serviceCollection.Configure<BearerTokenConfig>(configuration.GetSection(nameof(BearerTokenConfig)));
-        serviceCollection.Configure<TheMovieDbConfig>(configuration.GetSection(nameof(TheMovieDbConfig)));
-        serviceCollection.Configure<RedisConfig>(configuration.GetSection(nameof(RedisConfig)));
-        serviceCollection.Configure<HubtelSmsConfig>(configuration.GetSection(nameof(HubtelSmsConfig)));
+        serviceCollection
+            .AddScoped<IMoviesHttpService, MoviesHttpService>()
+            .AddScoped<IMoviesService, MoviesService>()
+            .AddScoped<IUserService, UserService>()
+            .AddScoped<IAuthService, AuthService>()
+            .AddScoped<ISmsService, SmsService>()
+            .AddScoped<IUserRepository, UserRepository>()
+            .AddScoped<IUserCacheRepository, UserCacheRepository>()
+            .AddScoped<IFavoriteMovieRepository, FavoriteMovieRepository>()
+            .AddScoped<IOtpCodeRepository, OtpCodeRepository>();
+        
+        return serviceCollection;
     }
     
     public static async Task RunMigrations(this IServiceProvider serviceProvider)

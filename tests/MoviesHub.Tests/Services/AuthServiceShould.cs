@@ -41,7 +41,6 @@ public class AuthServiceShould : IClassFixture<TestFixture>
 
         return new AuthService(
             userService: _userServiceMock.Object,
-            logger: logger,
             bearerTokenConfig: bearerTokenConfig,
             otpCodeRepository: _otpCodeRepositoryMock.Object,
             smsService: _smsServiceMock.Object);

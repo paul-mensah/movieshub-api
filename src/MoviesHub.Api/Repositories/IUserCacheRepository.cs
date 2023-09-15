@@ -1,61 +1,37 @@
 ﻿using Microsoft.Extensions.Options;
 using MoviesHub.Api.Configurations;
 using MoviesHub.Api.Helpers;
+using MoviesHub.Api.Services.Interfaces;
 using MoviesHub.Api.Storage.Entities;
 using Newtonsoft.Json;
-using StackExchange.Redis;
 
 namespace MoviesHub.Api.Repositories;
 
 public class UserCacheRepository : IUserCacheRepository
 {
-    private readonly ILogger<UserCacheRepository> _logger;
     private readonly RedisConfig _redisConfig;
-    private readonly IConnectionMultiplexer _redis;
+    private readonly IRedisService _redisService;
 
-    public UserCacheRepository(ILogger<UserCacheRepository> logger,
-        IOptions<RedisConfig> redisConfig,
-        IConnectionMultiplexer redis)
+    public UserCacheRepository(IOptions<RedisConfig> redisConfig,
+        IRedisService redisService)
     {
-        _logger = logger;
         _redisConfig = redisConfig.Value;
-        _redis = redis;
+        _redisService = redisService;
     }
 
     public async Task<User> GetUserByMobileNumberAsync(string mobileNumber)
     {
-        try
-        {
-            string userKey = CommonConstants.User.GetUserKey(mobileNumber);
-            var userRedisValue = await _redis.GetDatabase().StringGetAsync(userKey);
+        string userKey = CommonConstants.User.GetUserKey(mobileNumber);
+        string userRedisValue = await _redisService.StringGetAsync(userKey);
 
-            return !userRedisValue.HasValue
-                ? null
-                : JsonConvert.DeserializeObject<User>(userRedisValue.ToString());
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "{mobileNumber}: An error occured getting cached user data", mobileNumber);
-            return null;
-        }
+        return string.IsNullOrEmpty(userRedisValue)
+            ? null : JsonConvert.DeserializeObject<User>(userRedisValue);
     }
 
     public async Task<bool> CacheUserAccount(User user)
     {
-        try
-        {
-            string userKey = CommonConstants.User.GetUserKey(user.MobileNumber);
-            string serializedUserAccount = JsonConvert.SerializeObject(user);
-            
-            return await _redis.GetDatabase()
-                .StringSetAsync(userKey, serializedUserAccount, TimeSpan.FromDays(_redisConfig.DataExpiryDays));
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "{mobileNumber}: An error occured caching user account\nUser:{userAccount}",
-                user.MobileNumber, JsonConvert.SerializeObject(user));
-            return false;
-        }
+        string userKey = CommonConstants.User.GetUserKey(user.MobileNumber);
+        return await _redisService.StringSetAsync(userKey, user, TimeSpan.FromDays(_redisConfig.DataExpiryDays));
     }
 }
 

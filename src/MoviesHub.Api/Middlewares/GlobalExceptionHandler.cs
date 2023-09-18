@@ -20,7 +20,7 @@ public static class GlobalExceptionHandler
                 IExceptionHandlerFeature exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
                 if (exceptionHandlerFeature is not null)
                 {
-                    var baseException = exceptionHandlerFeature.Error;
+                    Exception baseException = exceptionHandlerFeature.Error;
                     logger.LogError(baseException, "Something went wrong:{exception}", baseException.Message);
 
                     var response = new

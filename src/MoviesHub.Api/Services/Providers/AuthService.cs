@@ -74,7 +74,7 @@ public class AuthService : IAuthService
             return CommonResponses.ErrorResponse
                 .FailedDependencyErrorResponse<LoginResponse>();
 
-        if (!otpCode.Code.Equals(request.Code) || !otpCode.Prefix.Equals(request.Prefix))
+        if (!otpCode.Code.Equals(request.Code) || !otpCode.Prefix.Equals(request.Prefix, StringComparison.OrdinalIgnoreCase))
             return CommonResponses.ErrorResponse
                 .BadRequestResponse<LoginResponse>("Incorrect authentication code");
 

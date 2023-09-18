@@ -8,15 +8,15 @@ public static class UserHelper
 {
     public static UserResponse GetUserData(this ClaimsPrincipal claims)
     {
-        var claimsIdentity = claims.Identities.FirstOrDefault(i => i.AuthenticationType == CommonConstants.Authentication.AppAuthIdentity);
-        var userData = claimsIdentity?.FindFirst(ClaimTypes.Thumbprint);
+        ClaimsIdentity claimsIdentity = claims.Identities.FirstOrDefault(i => i.AuthenticationType == CommonConstants.Authentication.AppAuthIdentity);
+        Claim userData = claimsIdentity?.FindFirst(ClaimTypes.Thumbprint);
 
         if (userData is null)
         {
             return new UserResponse();
         }
 
-        var user = JsonConvert.DeserializeObject<UserResponse>(userData.Value);
+        UserResponse user = JsonConvert.DeserializeObject<UserResponse>(userData.Value);
         return user;
     }
 }

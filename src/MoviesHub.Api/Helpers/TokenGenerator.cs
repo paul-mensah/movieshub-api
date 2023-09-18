@@ -22,16 +22,16 @@ public static class TokenGenerator
             throw new ArgumentNullException(nameof(config), "Bearer token configuration must not be null or empty");
         }
         
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(config.Key));
-        var now = DateTime.UtcNow;
+        JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
+        SymmetricSecurityKey securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(config.Key));
+        DateTime now = DateTime.UtcNow;
 
         var claims = new List<Claim>
         {
             new (ClaimTypes.Thumbprint, JsonConvert.SerializeObject(user))
         };
 
-        var token = new JwtSecurityToken(
+        JwtSecurityToken token = new JwtSecurityToken(
             config.Issuer,
             config.Audience,
             claims,

@@ -8,7 +8,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace MoviesHub.Api.Controllers.v1;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v1/otp/[controller]")]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(BaseResponse<EmptyResponse>))]
 public class AuthController : ControllerBase
 {
@@ -24,7 +24,7 @@ public class AuthController : ControllerBase
     /// </summary>
     /// <param name="mobileNumber"></param>
     /// <returns></returns>
-    [HttpGet("otp/request/{mobileNumber}")]
+    [HttpGet("request/{mobileNumber}")]
     [Produces(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<OtpCodeResponse>))]
     [ProducesResponseType(StatusCodes.Status424FailedDependency, Type = typeof(BaseResponse<EmptyResponse>))]
@@ -42,7 +42,7 @@ public class AuthController : ControllerBase
     /// <param name="mobileNumber"></param>
     /// <param name="request"></param>
     /// <returns></returns>
-    [HttpPost("otp/verify/{mobileNumber}")]
+    [HttpPost("verify/{mobileNumber}")]
     [Consumes(MediaTypeNames.Application.Json)]
     [Produces(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<LoginResponse>))]

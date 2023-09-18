@@ -11,6 +11,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace MoviesHub.Api.Controllers.v1;
 
 [ApiController]
+[Authorize(AuthenticationSchemes = "Bearer")]
 [Route("api/v1/[controller]")]
 [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(BaseResponse<EmptyResponse>))]
 public class MoviesController : ControllerBase
@@ -23,63 +24,26 @@ public class MoviesController : ControllerBase
     }
 
     /// <summary>
-    /// Get top rated movies
+    /// Get movies
     /// </summary>
     /// <param name="filter"></param>
     /// <returns></returns>
-    [HttpGet("top-rated")]
+    [HttpGet]
     [Produces(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<PaginatedMoviesListResponse>))]
-    [SwaggerOperation("Get top rated movies", OperationId = nameof(GetTopRatedMovies))]
-    public async Task<IActionResult> GetTopRatedMovies([FromQuery] MoviesFilter filter)
+    [SwaggerOperation("Get movies", OperationId = nameof(GetMovies))]
+    public async Task<IActionResult> GetMovies([FromQuery] MoviesFilter filter)
     {
-        var response = await _moviesService.GetMoviesList(CommonConstants.Movies.TopRatedMoviesPath, filter);
-        return StatusCode(response.Code, response);
-    }
-    
-    /// <summary>
-    /// Get popular movies
-    /// </summary>
-    /// <param name="filter"></param>
-    /// <returns></returns>
-    [HttpGet("popular")]
-    [Produces(MediaTypeNames.Application.Json)]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<PaginatedMoviesListResponse>))]
-    [SwaggerOperation("Get popular movies", OperationId = nameof(GetPopularMovies))]
-    public async Task<IActionResult> GetPopularMovies([FromQuery] MoviesFilter filter)
-    {
-        var response = await _moviesService.GetMoviesList(CommonConstants.Movies.PopularMoviesPath, filter);
-        return StatusCode(response.Code, response);
-    }
-    
-    /// <summary>
-    /// Get upcoming movies
-    /// </summary>
-    /// <param name="filter"></param>
-    /// <returns></returns>
-    [HttpGet("upcoming")]
-    [Produces(MediaTypeNames.Application.Json)]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<PaginatedMoviesListResponse>))]
-    [SwaggerOperation("Get upcoming movies", OperationId = nameof(GetUpcomingMovies))]
-    public async Task<IActionResult> GetUpcomingMovies([FromQuery] MoviesFilter filter)
-    {
-        var response = await _moviesService.GetMoviesList(CommonConstants.Movies.UpcomingMoviesPath, filter);
-
-        return StatusCode(response.Code, response);
-    }
-    
-    /// <summary>
-    /// Get trending movies
-    /// </summary>
-    /// <param name="filter"></param>
-    /// <returns></returns>
-    [HttpGet("trending")]
-    [Produces(MediaTypeNames.Application.Json)]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BaseResponse<PaginatedMoviesListResponse>))]
-    [SwaggerOperation("Get trending movies", OperationId = nameof(GetTrendingMovies))]
-    public async Task<IActionResult> GetTrendingMovies([FromQuery] MoviesFilter filter)
-    {
-        var response = await _moviesService.GetMoviesList(CommonConstants.Movies.TrendingMoviesPath, filter);
+        string moviesPath = filter.Type.ToLower().Trim() switch
+        {
+            "popular" => CommonConstants.Movies.PopularMoviesPath,
+            "top-rated" => CommonConstants.Movies.TopRatedMoviesPath,
+            "trending" => CommonConstants.Movies.TrendingMoviesPath,
+            "upcoming" => CommonConstants.Movies.UpcomingMoviesPath,
+            _ => CommonConstants.Movies.TrendingMoviesPath
+        };
+        
+        var response = await _moviesService.GetMoviesList(moviesPath, filter);
         return StatusCode(response.Code, response);
     }
 
@@ -88,7 +52,6 @@ public class MoviesController : ControllerBase
     /// </summary>
     /// <param name="movieId"></param>
     /// <returns></returns>
-    [Authorize(AuthenticationSchemes = "Bearer")]
     [AllowAnonymous]
     [HttpGet("{movieId}")]
     [Produces(MediaTypeNames.Application.Json)]
